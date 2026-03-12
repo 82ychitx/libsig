@@ -24,8 +24,8 @@ generate_signal = @(N) A1*sin(2*pi*f1*(0:N-1)/fs) + ...
 %% 3. Generování signálů
 disp('Generuji signály...');
 sig_small  = generate_signal(N_small)';   % Transpozice na sloupcový vektor
-sig_medium = generate_signal(N_medium)';
-sig_large  = generate_signal(N_large)';
+%sig_medium = generate_signal(N_medium)';
+%sig_large  = generate_signal(N_large)';
 
 %% 4. Vykreslení malého signálu a jeho spektra pro kontrolu
 t_small = (0:N_small-1)/fs;
@@ -51,13 +51,13 @@ grid on;
 disp('Exportuji do CSV (to může u velkého datasetu chvíli trvat)...');
 
 % writematrix je v novějších verzích Matlabu velmi rychlý
-writematrix(sig_small, 'signal_small.csv');
+writematrix(sig_small, '../data/input/signal_small.csv');
 disp('signal_small.csv uložen.');
 
-writematrix(sig_medium, 'signal_medium.csv');
-disp('signal_medium.csv uložen.');
+%writematrix(sig_medium, 'signal_medium.csv');
+%disp('signal_medium.csv uložen.'s);
 
-writematrix(sig_large, 'signal_large.csv');
-disp('signal_large.csv uložen.');
+%writematrix(sig_large, 'signal_large.csv');
+%disp('signal_large.csv uložen.');
 
 disp('Hotovo!');

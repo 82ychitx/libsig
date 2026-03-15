@@ -50,8 +50,9 @@ grid on;
 %% 5. Export do CSV
 disp('Exportuji do CSV (to může u velkého datasetu chvíli trvat)...');
 
+input_path = '../data/input/';
 % writematrix je v novějších verzích Matlabu velmi rychlý
-writematrix(sig_small, '../data/input/signal_small.csv');
+writematrix(sig_small, strcat(input_path, 'signal_small.csv'));
 disp('signal_small.csv uložen.');
 
 %writematrix(sig_medium, 'signal_medium.csv');

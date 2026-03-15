@@ -21,16 +21,21 @@ disp(['Načteno ', num2str(N_samples), ' vzorků.']);
 
 % Příprava parametrů filtrů pro testování
 % (Vytvoříme dva jednoduché filtry 4. řádu, abychom měli co spojovat)
-disp('Generuji koeficienty filtrů a impulsní odezvu...');
-[b1, a1] = butter(4, 0.2); % Filtr 1: Butterworth dolní propust
-[b2, a2] = cheby1(4, 0.5, 0.4); % Filtr 2: Čebyšev dolní propust
+
+disp('Načítám koeficienty filtru a generuji impulsní odezvu...');
+filter_coeffs = readmatrix('../data/input/filter_coeffs.csv');
+% TODO: Is there a better way to do this?
+b1 = filter_coeffs(1, :);
+a1 = filter_coeffs(2, :);
+b2 = filter_coeffs(3, :);
+a2 = filter_coeffs(4, :);
+
 
 % Impulsní odezva prvního filtru (např. 100 vzorků) pro test konvoluce
 h = impz(b1, a1, 100); 
 
 disp('Příprava dokončena. Spouštím benchmark...');
 disp(' ');
-
 %% 2. MĚŘENÍ ČASU (BENCHMARK)
 disp('--- VÝSLEDKY MĚŘENÍ ---');
 
@@ -42,6 +47,8 @@ disp('--- VÝSLEDKY MĚŘENÍ ---');
 tic;
 y_filter = filter(b1, a1, signal);
 time_filter = toc;
+
+writematrix(y_filter, '../data/output/filter_result.csv');
 
 % 2. Funkce CONV (Konvoluce signálu s impulsní odezvou)
 % (Používáme parametr 'same', aby měl výstup stejnou délku jako vstup)

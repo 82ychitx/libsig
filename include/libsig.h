@@ -10,13 +10,13 @@ typedef enum
     LIBSIG_ERR,
 } libsig_error_t;
 
-typedef libsig_error_t (*filter_fn)(double* b,
-                                    size_t b_len,
-                                    double* a,
-                                    size_t a_len,
-                                    double* x,
-                                    size_t x_len,
-                                    double* y);
+typedef libsig_error_t (*filter_fn_t)(const double* b,
+                                      size_t b_len,
+                                      const double* a,
+                                      size_t a_len,
+                                      const double* x,
+                                      size_t x_len,
+                                      double* y);
 
 libsig_error_t
 filter_naive_ternary(const double* b,

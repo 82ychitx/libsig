@@ -1,4 +1,5 @@
 #include "libsig.h"
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -64,6 +65,40 @@ filter_history_buffer(const double* b,
         }
 
         y[n] = 1 / a[0] * (ff_sum - fb_sum);
+    }
+
+    return result;
+}
+
+libsig_error_t
+impz(const double* b,
+     size_t b_len,
+     const double* a,
+     size_t a_len,
+     double* y,
+     size_t y_len)
+{
+    double ff_sum;
+    double fb_sum;
+    uint8_t* impulse;
+    
+    libsig_error_t result = LIBSIG_EOK;
+
+    impulse = calloc(y_len, sizeof(uint8_t));
+    
+    for (size_t n = 0; n < y_len; ++n) {
+        ff_sum = 0, fb_sum = 0;
+
+        for (size_t i = 0; i < b_len; ++i) {
+            // Here we know that the input will be only at the first element
+            ff_sum += b[i] * (n < i ? 0 : impulse[n - i]);
+        }
+
+        for (size_t j = 1; j < a_len; ++j) {
+            fb_sum += a[j] * (n < j ? 0 : y[n - j]);
+        }
+
+        y[n] = (1 / a[0]) * (ff_sum - fb_sum);
     }
 
     return result;

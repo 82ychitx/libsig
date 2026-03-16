@@ -31,13 +31,20 @@ bench_print_table(bench_result_t* result)
     // Print the filter benches
     printf("------------------------- filter -------------------------\n");
     for (size_t i = 0; i < result->filter_len; ++i) {
-        printf("%s         | %lf | %lf | %d \n",
+        printf("%s         | %13.6lf | %14.3lf | %d \n",
                result->filter_benches[i].algo_name,
                result->filter_benches[i].duration,
                result->filter_benches[i].duration * 1000,
                result->filter_benches[i].state);
     }
     printf("-------------------------- conv --------------------------\n");
+        for (size_t i = 0; i < result->impz_len; ++i) {
+        printf("%s         | %13.6lf | %14.3lf | %d \n",
+               result->impz_benches[i].algo_name,
+               result->impz_benches[i].duration,
+               result->impz_benches[i].duration * 1000,
+               result->impz_benches[i].state);
+    }
     /* printf("conv         | %13.6f | %14.3f \n", time_conv, time_conv * 1000);
      */
     /* printf("----------------------------------------------------\n"); */
@@ -58,7 +65,7 @@ bench_print_table(bench_result_t* result)
 bench_error_t
 filter_bench(const filter_input_t* input,
              const double* output_correct,
-             filter_bench_t* benches,
+             algo_bench_t* benches,
              size_t benches_len)
 {
     bool result = BENCH_EOK;
@@ -68,7 +75,7 @@ filter_bench(const filter_input_t* input,
         bool algo_res;
 
         tic = clock();
-        benches[i].func(input->a,
+        ((filter_fn_t)benches[i].func)(input->a,
                         input->a_len,
                         input->b,
                         input->b_len,
@@ -78,6 +85,36 @@ filter_bench(const filter_input_t* input,
         tic = clock() - tic;
 
         algo_res = _is_buffers_equal(input->y, output_correct, input->x_len);
+
+        benches[i].state = algo_res ? BENCH_SUCCESS : BENCH_FAILED;
+        benches[i].duration = (double)tic / CLOCKS_PER_SEC;
+    }
+
+    return result;
+}
+
+bench_error_t
+impz_bench(const impz_input_t* input,
+           const double* output_correct,
+           algo_bench_t* benches,
+           size_t benches_len)
+{
+    bool result = BENCH_EOK;
+
+    clock_t tic;
+    for (size_t i = 0; i < benches_len; ++i) {
+        bool algo_res;
+
+        tic = clock();
+        ((impz_fn_t)benches[i].func)(input->a,
+                        input->a_len,
+                        input->b,
+                        input->b_len,
+                        input->y,
+                        input->y_len);
+        tic = clock() - tic;
+
+        algo_res = _is_buffers_equal(input->y, output_correct, input->y_len);
 
         benches[i].state = algo_res ? BENCH_SUCCESS : BENCH_FAILED;
         benches[i].duration = (double)tic / CLOCKS_PER_SEC;

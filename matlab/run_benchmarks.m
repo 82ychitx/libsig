@@ -32,7 +32,9 @@ a2 = filter_coeffs(4, :);
 
 
 % Impulsní odezva prvního filtru (např. 100 vzorků) pro test konvoluce
-h = impz(b1, a1, 100); 
+h = impz(b1, a1, 100);
+
+writematrix(h, '../data/output/impz_result.csv');
 
 disp('Příprava dokončena. Spouštím benchmark...');
 disp(' ');

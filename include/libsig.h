@@ -10,6 +10,7 @@ typedef enum
     LIBSIG_ERR,
 } libsig_error_t;
 
+// ========================== FILTER ==========================
 typedef libsig_error_t (*filter_fn_t)(const double* b,
                                       size_t b_len,
                                       const double* a,
@@ -36,10 +37,24 @@ filter_history_buffer(const double* b,
                       size_t x_len,
                       double* y);
 
+// ========================== IMPZ ==========================
+typedef libsig_error_t (*impz_fn_t)(const double* b,
+                                    size_t b_len,
+                                    const double* a,
+                                    size_t a_len,
+                                    double* y,
+                                    size_t y_len);
+
 libsig_error_t
-conv_naive(const double* u,
- size_t u_len,
- const double* v,
- size_t v_len);
+impz(const double* b,
+     size_t b_len,
+     const double* a,
+     size_t a_len,
+     double* y,
+     size_t y_len);
+
+// ========================== CONV ==========================
+libsig_error_t
+conv_naive(const double* u, size_t u_len, const double* v, size_t v_len);
 
 #endif // LIBSIG_H_

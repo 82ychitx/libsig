@@ -21,17 +21,26 @@ main()
 
     char buf[256];
     double* input_data;
-    double* filter_output_correct;
-    double* filter_output;
+    double* output_correct;
+    double* output;
 
     size_t num_of_input = 0;
     size_t num_of_filter_correct = 0;
 
     double filter_coeffs[FILTER_ROWS][FILTER_COLS] = { 0 };
 
-    filter_bench_t filter_benches[] = {
-        { "Direct Form I (Naive)", filter_naive_ternary, BENCH_NOT_RAN, 0.0 },
+    algo_bench_t filter_benches[] = {
+        { "Direct Form I (Naive)",
+          (generic_fn_t)filter_naive_ternary,
+          BENCH_NOT_RAN,
+          0.0 },
     };
+    size_t filter_benches_len = sizeof(filter_benches) / sizeof(algo_bench_t);
+
+    algo_bench_t impz_benches[] = {
+        { "Impz allocate", (generic_fn_t)impz, BENCH_NOT_RAN, 0.0 },
+    };
+    size_t impz_benches_len = sizeof(impz_benches) / sizeof(algo_bench_t);
 
     file = fopen("./data/input/filter_coeffs.csv", "r");
     if (!file) {
@@ -66,37 +75,55 @@ main()
         return 1;
     }
 
-    filter_output_correct = malloc(sizeof(double) * BUF_SIZE);
-    if (!filter_output_correct) {
+    output_correct = malloc(sizeof(double) * BUF_SIZE);
+    if (!output_correct) {
         return 2;
     }
 
     if (read_file_to_buffer("./data/output/filter_result.csv",
-                            filter_output_correct,
+                            output_correct,
                             &num_of_filter_correct) != 0) {
         return 1;
     }
 
-    filter_output = malloc(sizeof(double) * num_of_input);
-    if (filter_output == NULL) {
+    output = malloc(sizeof(double) * num_of_input);
+    if (output == NULL) {
         return 2;
     }
-    filter_input_t filter_input = { filter_coeffs[0], FILTER_COLS,
-                                    filter_coeffs[1], FILTER_COLS,
-                                    input_data,       num_of_input,
-                                    filter_output };
+    filter_input_t filter_input = { filter_coeffs[0],
+                                    FILTER_COLS,
+                                    filter_coeffs[1],
+                                    FILTER_COLS,
+                                    input_data,
+                                    num_of_input,
+                                    output };
 
     filter_bench(&filter_input,
-                 filter_output_correct,
+                 output_correct,
                  filter_benches,
-                 sizeof(filter_benches) / sizeof(filter_bench_t));
+                 sizeof(filter_benches) / sizeof(algo_bench_t));
 
-    bench_result_t bench = { filter_benches, sizeof(filter_benches) / sizeof(filter_bench_t) };
+    if (read_file_to_buffer("./data/output/impz_result.csv",
+                            output_correct,
+                            &num_of_filter_correct) != 0) {
+        return 1;
+    }
+
+    impz_input_t impz_input = { filter_coeffs[0], FILTER_COLS,
+                                filter_coeffs[1], FILTER_COLS,
+                                output,           num_of_filter_correct };
+
+    impz_bench(&impz_input, output_correct, impz_benches, impz_benches_len);
+
+    bench_result_t bench = {
+        filter_benches, filter_benches_len, impz_benches, impz_benches_len
+    };
+    
     bench_print_table(&bench);
 
     free(input_data);
-    free(filter_output_correct);
-    free(filter_output);
+    free(output_correct);
+    free(output);
 
     return 0;
 }

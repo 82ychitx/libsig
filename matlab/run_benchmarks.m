@@ -56,6 +56,8 @@ tic;
 y_conv = conv(signal, h, 'same');
 time_conv = toc;
 
+writematrix(y_conv, '../data/output/conv_result.csv');
+
 % ---------------------------------------------------------
 % B. Funkce pro analýzu a manipulaci se systémy (filtry)
 % Tyto nezávisí na signálu, pracují jen s b, a koeficienty.

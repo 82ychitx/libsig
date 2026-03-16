@@ -1,10 +1,10 @@
-#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
+#include "bench.h"
 #include "libsig.h"
 #include "main.h"
 
@@ -15,10 +15,9 @@
 #define FILTER_ROWS 4
 
 int
-main(int argc, char* argv[])
+main()
 {
     FILE* file;
-    clock_t tic;
 
     char buf[256];
     double* input_data;
@@ -30,8 +29,8 @@ main(int argc, char* argv[])
 
     double filter_coeffs[FILTER_ROWS][FILTER_COLS] = { 0 };
 
-    filter_bench_t filter_fns[] = {
-        { "Direct Form I (Naive)", filter_naive_ternary },
+    filter_bench_t filter_benches[] = {
+        { "Direct Form I (Naive)", filter_naive_ternary, BENCH_NOT_RAN, 0.0 },
     };
 
     file = fopen("./data/input/filter_coeffs.csv", "r");
@@ -79,29 +78,21 @@ main(int argc, char* argv[])
     }
 
     filter_output = malloc(sizeof(double) * num_of_input);
-    if (!filter_output) {
+    if (filter_output == NULL) {
         return 2;
     }
+    filter_input_t filter_input = { filter_coeffs[0], FILTER_COLS,
+                                    filter_coeffs[1], FILTER_COLS,
+                                    input_data,       num_of_input,
+                                    filter_output };
 
-    for (size_t i = 0; i < sizeof(filter_fns) / sizeof(filter_bench_t); ++i) {
-        bool result;
-        
-        tic = clock();
-        filter_fns[i].func(filter_coeffs[0],
-                           FILTER_COLS,
-                           filter_coeffs[1],
-                           FILTER_COLS,
-                           input_data,
-                           num_of_input,
-                           filter_output);
-        tic = clock() - tic;
+    filter_bench(&filter_input,
+                 filter_output_correct,
+                 filter_benches,
+                 sizeof(filter_benches) / sizeof(filter_bench_t));
 
-        result = is_buffers_equal(filter_output, filter_output_correct, num_of_filter_correct);
-        printf("Filter algorithm: %s, took %lf s to complete and the results are equal: %b\n",
-               filter_fns[i].algo_name,
-               (double)tic / CLOCKS_PER_SEC,
-               result);
-    }
+    bench_result_t bench = { filter_benches, sizeof(filter_benches) / sizeof(filter_bench_t) };
+    bench_print_table(&bench);
 
     free(input_data);
     free(filter_output_correct);
@@ -132,19 +123,4 @@ read_file_to_buffer(const char* filename, double* buffer, size_t* read_len)
     fclose(file);
 
     return 0;
-}
-
-bool
-is_buffers_equal(const double* a, const double* b, size_t len)
-{
-    bool result = true;
-    double epsilon = 1e-9;
-    for (size_t i = 0; i < len; ++i) {
-        if (fabs(a[i] - b[i]) > epsilon) {
-            result = false;
-            break;
-        }
-    }
-
-    return result;
 }

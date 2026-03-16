@@ -36,4 +36,10 @@ filter_history_buffer(const double* b,
                       size_t x_len,
                       double* y);
 
+libsig_error_t
+conv_naive(const double* u,
+ size_t u_len,
+ const double* v,
+ size_t v_len);
+
 #endif // LIBSIG_H_

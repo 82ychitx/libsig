@@ -44,7 +44,12 @@ target_compile_options(libsig PRIVATE
 target_link_libraries(libsig PRIVATE m)
 
 # --- Executable Target ---
-add_executable(libsig_bench app/main.c)
+add_executable(libsig_bench
+    app/main.c
+    app/bench.c)
+
+# 2. Tell the executable where to find its local header files
+target_include_directories(libsig_bench PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
 
 target_compile_options(libsig_bench PRIVATE
     $<$<CONFIG:Release>:-O3 -march=native -ffast-math>

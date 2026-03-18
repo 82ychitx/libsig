@@ -8,124 +8,69 @@
 #include "libsig.h"
 #include "main.h"
 
-// TODO: Change this to dynamically change when we run out
-#define BUF_SIZE 1000
-
-#define FILTER_COLS 5
-#define FILTER_ROWS 4
-
 int
 main()
 {
-    FILE* file;
-
-    char buf[256];
-    double* input_data;
-    double* output_correct;
-    double* output;
-
+    bench_error_t status = BENCH_EOK;
+    double* input_data = NULL;
     size_t num_of_input = 0;
-    size_t num_of_filter_correct = 0;
-
     double filter_coeffs[FILTER_ROWS][FILTER_COLS] = { 0 };
 
     algo_bench_t filter_benches[] = {
-        { "Direct Form I (Naive)",
-          (generic_fn_t)filter_naive_ternary,
-          BENCH_NOT_RAN,
-          0.0 },
+        init_algo_bench("Form 1", (generic_fn_t)filter_naive_ternary),
+        init_algo_bench("Split loops", (generic_fn_t)filter_split_loops),
     };
-    size_t filter_benches_len = sizeof(filter_benches) / sizeof(algo_bench_t);
 
     algo_bench_t impz_benches[] = {
-        { "Impz allocate", (generic_fn_t)impz, BENCH_NOT_RAN, 0.0 },
+        init_algo_bench("Alloc buf", (generic_fn_t)impz),
     };
-    size_t impz_benches_len = sizeof(impz_benches) / sizeof(algo_bench_t);
 
-    file = fopen("./data/input/filter_coeffs.csv", "r");
-    if (!file) {
-        return 1;
-    }
-
-    uint8_t row = 0;
-    // Will be 4x5 since we are loading the same file over and over again
-    while (fgets(buf, sizeof(buf), file) != NULL && row < FILTER_ROWS) {
-        uint8_t col = 0;
-        char* token = strtok(buf, ",");
-
-        while (token != NULL && col < FILTER_COLS) {
-            filter_coeffs[row][col] = atof(token);
-
-            token = strtok(NULL, ",");
-            ++col;
-        }
-
-        ++row;
-    }
-    fclose(file);
-
-    // Allocate buffer for now
-    input_data = malloc(sizeof(double) * BUF_SIZE);
-    if (!input_data) {
-        return 2;
-    }
-
-    if (read_file_to_buffer(
-          "./data/input/signal_small.csv", input_data, &num_of_input) != 0) {
-        return 1;
-    }
-
-    output_correct = malloc(sizeof(double) * BUF_SIZE);
-    if (!output_correct) {
-        return 2;
-    }
-
-    if (read_file_to_buffer("./data/output/filter_result.csv",
-                            output_correct,
-                            &num_of_filter_correct) != 0) {
-        return 1;
-    }
-
-    output = malloc(sizeof(double) * num_of_input);
-    if (output == NULL) {
-        return 2;
-    }
-    filter_input_t filter_input = { filter_coeffs[0],
-                                    FILTER_COLS,
-                                    filter_coeffs[1],
-                                    FILTER_COLS,
-                                    input_data,
-                                    num_of_input,
-                                    output };
-
-    filter_bench(&filter_input,
-                 output_correct,
-                 filter_benches,
-                 sizeof(filter_benches) / sizeof(algo_bench_t));
-
-    if (read_file_to_buffer("./data/output/impz_result.csv",
-                            output_correct,
-                            &num_of_filter_correct) != 0) {
-        return 1;
-    }
-
-    impz_input_t impz_input = { filter_coeffs[0], FILTER_COLS,
-                                filter_coeffs[1], FILTER_COLS,
-                                output,           num_of_filter_correct };
-
-    impz_bench(&impz_input, output_correct, impz_benches, impz_benches_len);
-
-    bench_result_t bench = {
-        filter_benches, filter_benches_len, impz_benches, impz_benches_len
+    algo_bench_t conv_benches[] = {
+        init_algo_bench("Naive", (generic_fn_t)conv_naive),
+        init_algo_bench("Bounded", (generic_fn_t)conv_bounded),
     };
-    
-    bench_print_table(&bench);
+
+    if (load_filter_coeffs("./data/input/filter_coeffs.csv", filter_coeffs) !=
+        0) {
+        printf("Failed to load filter coefficients.");
+        status = BENCH_EFILE;
+    } else if ((input_data = malloc(sizeof(double) * BUF_SIZE)) == NULL) {
+        printf("Error allocating input data buffer.");
+        status = BENCH_EALLOC;
+    } else if (read_file_to_buffer("./data/input/signal_small.csv",
+                                   input_data,
+                                   &num_of_input) != 0) {
+        printf("Failed to load input data.");
+        return BENCH_EFILE;
+    } else if ((status = filter_bench_suite(filter_coeffs,
+                                            input_data,
+                                            num_of_input,
+                                            filter_benches,
+                                            ALGO_BENCH_LEN(filter_benches))) !=
+               BENCH_EOK) {
+        printf("Error running filter benches.");
+    } else if ((status = impz_bench_suite(
+                  filter_coeffs, impz_benches, ALGO_BENCH_LEN(impz_benches))) !=
+               BENCH_EOK) {
+        printf("Error running impz benches.");
+    } else if ((status = conv_bench_suite(input_data,
+                                          num_of_input,
+                                          conv_benches,
+                                          ALGO_BENCH_LEN(conv_benches))) !=
+               BENCH_EOK) {
+        printf("Error running conv benches.");
+    } else {
+
+        bench_result_t bench = { filter_benches, ALGO_BENCH_LEN(filter_benches),
+                                 impz_benches,   ALGO_BENCH_LEN(impz_benches),
+                                 conv_benches,   ALGO_BENCH_LEN(conv_benches) };
+
+        bench_print_table(&bench);
+    }
 
     free(input_data);
-    free(output_correct);
-    free(output);
 
-    return 0;
+    return status;
 }
 
 int
@@ -149,5 +94,48 @@ read_file_to_buffer(const char* filename, double* buffer, size_t* read_len)
     }
     fclose(file);
 
+    return 0;
+}
+
+int
+dump_buffer_to_csv(const char* filename, const double* buffer, size_t len)
+{
+    FILE* file = fopen(filename, "w");
+    if (file == NULL) {
+        return 1;
+    }
+
+    fprintf(file, "Index,Value\n");
+
+    for (size_t i = 0; i < len; ++i) {
+        fprintf(file, "%zu,%lf\n", i, buffer[i]);
+    }
+
+    fclose(file);
+    return 0;
+}
+
+int
+load_filter_coeffs(const char* filepath,
+                   double coeffs[FILTER_ROWS][FILTER_COLS])
+{
+    FILE* file = fopen(filepath, "r");
+    if (!file)
+        return 1;
+
+    char buf[256];
+    uint8_t row = 0;
+
+    while (fgets(buf, sizeof(buf), file) != NULL && row < FILTER_ROWS) {
+        uint8_t col = 0;
+        char* token = strtok(buf, ",");
+        while (token != NULL && col < FILTER_COLS) {
+            coeffs[row][col] = atof(token);
+            token = strtok(NULL, ",");
+            ++col;
+        }
+        ++row;
+    }
+    fclose(file);
     return 0;
 }

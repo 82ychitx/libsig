@@ -32,7 +32,9 @@ a2 = filter_coeffs(4, :);
 
 
 % Impulsní odezva prvního filtru (např. 100 vzorků) pro test konvoluce
+tic;
 h = impz(b1, a1, 100);
+time_impz = toc;
 
 writematrix(h, '../data/output/impz_result.csv');
 
@@ -55,7 +57,7 @@ writematrix(y_filter, '../data/output/filter_result.csv');
 % 2. Funkce CONV (Konvoluce signálu s impulsní odezvou)
 % (Používáme parametr 'same', aby měl výstup stejnou délku jako vstup)
 tic;
-y_conv = conv(signal, h, 'same');
+y_conv = conv(signal, h, 'full');
 time_conv = toc;
 
 writematrix(y_conv, '../data/output/conv_result.csv');
@@ -94,6 +96,7 @@ fprintf('====================================================\n');
 fprintf('Funkce       | Doba trvání [s] | Doba trvání [ms] \n');
 fprintf('====================================================\n');
 fprintf('filter       | %13.6f | %14.3f \n', time_filter, time_filter * 1000);
+fprintf('impz         | %13.6f | %14.3f \n', time_impz, time_impz * 1000);
 fprintf('conv         | %13.6f | %14.3f \n', time_conv, time_conv * 1000);
 fprintf('----------------------------------------------------\n');
 fprintf('freqz        | %13.8f | %14.5f \n', time_freqz, time_freqz * 1000);

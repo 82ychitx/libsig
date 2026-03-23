@@ -211,6 +211,43 @@ _parallel_checker(const void* ctx, const void* expected_data)
     return result;
 }
 
+static void
+_feedback_runner(void* ctx, generic_fn_t func)
+{
+    const feedback_input_t* input = (const feedback_input_t*)ctx;
+    ((feedback_fn_t)func)(input->sys1_n,
+                          input->sys1_n_len,
+                          input->sys1_d,
+                          input->sys1_d_len,
+                          input->sys2_n,
+                          input->sys2_n_len,
+                          input->sys2_d,
+                          input->sys2_d_len,
+                          input->sys_out_n,
+                          input->sys_out_n_len,
+                          input->sys_out_d,
+                          input->sys_out_d_len);
+}
+
+static bool
+_feedback_checker(const void* ctx, const void* expected_data)
+{
+    bool result = true;
+    const feedback_input_t* input = (const feedback_input_t*)ctx;
+    const expected_tf_t* expected = (const expected_tf_t*)expected_data;
+
+    if (input->sys_out_n_len != expected->n_len ||
+        input->sys_out_d_len != expected->d_len) {
+        result = false;
+    } else {
+        result =
+          _is_buffers_equal(input->sys_out_n, expected->n, expected->n_len) &&
+          _is_buffers_equal(input->sys_out_d, expected->d, expected->d_len);
+    }
+
+    return result;
+}
+
 // -----------------------------------------------------------------------------
 // Public API
 // -----------------------------------------------------------------------------
@@ -537,4 +574,68 @@ parallel_bench_suite(const double input_coeffs[FILTER_ROWS][FILTER_COLS],
     free(output_d);
 
     return status;
+}
+
+bench_error_t
+feedback_bench(const feedback_input_t* input,
+               const expected_tf_t* output_correct,
+               algo_bench_t* benches,
+               size_t len)
+{
+    _run_generic_bench((void*)input,
+                       (const void*)output_correct,
+                       benches,
+                       len,
+                       _feedback_runner,
+                       _feedback_checker);
+    return BENCH_EOK;
+}
+
+bench_error_t
+feedback_bench_suite(const double input_coeffs[FILTER_ROWS][FILTER_COLS],
+                     algo_bench_t* benches,
+                     size_t len)
+{
+    bench_error_t status = BENCH_EOK;
+    size_t num_correct_n = 0;
+    size_t num_correct_d = 0;
+
+    size_t expected_output_len = CONV_FULL_LEN(FILTER_COLS, FILTER_COLS);
+
+    double* output_correct_n = malloc(sizeof(double) * expected_output_len);
+    double* output_correct_d = malloc(sizeof(double) * expected_output_len);
+    double* output_n = malloc(sizeof(double) * expected_output_len);
+    double* output_d = malloc(sizeof(double) * expected_output_len);
+
+    if (!output_correct_n || !output_correct_d || !output_n || !output_d) {
+        status = BENCH_EALLOC;
+    } else if (read_file_to_buffer("./data/output/feedback_result_n.csv",
+                                   output_correct_n,
+                                   &num_correct_n) != 0) {
+        status = BENCH_EFILE;
+    } else if (read_file_to_buffer("./data/output/feedback_result_d.csv",
+                                   output_correct_d,
+                                   &num_correct_d) != 0) {
+        status = BENCH_EFILE;
+    } else {
+        feedback_input_t feedback_input = {
+            input_coeffs[0], FILTER_COLS,   input_coeffs[1], FILTER_COLS,
+            input_coeffs[2], FILTER_COLS,   input_coeffs[3], FILTER_COLS,
+            output_n,        expected_output_len, output_d,        expected_output_len
+        };
+
+        expected_tf_t expected_output = {
+            output_correct_n, expected_output_len, output_correct_d, expected_output_len
+        };
+
+        feedback_bench(&feedback_input, &expected_output, benches, len);
+    }
+
+    free(output_correct_n);
+    free(output_correct_d);
+    free(output_n);
+    free(output_d);
+
+    return status;
+
 }

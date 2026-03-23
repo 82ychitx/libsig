@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-#define BUF_SIZE 1000
+#define BUF_SIZE 100'000
 
 #define FILTER_COLS 5
 #define FILTER_ROWS 4

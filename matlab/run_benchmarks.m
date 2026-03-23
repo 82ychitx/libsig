@@ -93,6 +93,8 @@ writematrix(a_parallel', '../data/output/parallel_result_d.csv');
 tic;
 [b_feedback, a_feedback] = feedback(b1, a1, b2, a2);
 time_feedback = toc;
+writematrix(b_feedback', '../data/output/feedback_result_n.csv');
+writematrix(a_feedback', '../data/output/feedback_result_d.csv');
 
 
 %% 3. VÝPIS VÝSLEDKŮ

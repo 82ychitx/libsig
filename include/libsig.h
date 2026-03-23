@@ -146,4 +146,32 @@ parallel_naive(const double* sys1_n,
                double* sys_out_d,
                size_t sys_out_d_len);
 
+// ========================== FEEDBACK ==========================
+typedef libsig_error_t (*feedback_fn_t)(const double* sys1_n,
+                                        size_t sys1_n_len,
+                                        const double* sys1_d,
+                                        size_t sys1_d_len,
+                                        const double* sys2_n,
+                                        size_t sys2_n_len,
+                                        const double* sys2_d,
+                                        size_t sys2_d_len,
+                                        double* sys_out_n,
+                                        size_t sys_out_n_len,
+                                        double* sys_out_d,
+                                        size_t sys_out_d_len);
+
+libsig_error_t
+feedback_naive(const double* sys1_n,
+               size_t sys1_n_len,
+               const double* sys1_d,
+               size_t sys1_d_len,
+               const double* sys2_n,
+               size_t sys2_n_len,
+               const double* sys2_d,
+               size_t sys2_d_len,
+               double* sys_out_n,
+               size_t sys_out_n_len,
+               double* sys_out_d,
+               size_t sys_out_d_len);
+
 #endif // LIBSIG_H_

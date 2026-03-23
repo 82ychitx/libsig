@@ -114,6 +114,22 @@ typedef struct
 
 typedef struct
 {
+    const double* sys1_n;
+    size_t sys1_n_len;
+    const double* sys1_d;
+    size_t sys1_d_len;
+    const double* sys2_n;
+    size_t sys2_n_len;
+    const double* sys2_d;
+    size_t sys2_d_len;
+    double* sys_out_n;
+    size_t sys_out_n_len;
+    double* sys_out_d;
+    size_t sys_out_d_len;
+} feedback_input_t;
+
+typedef struct
+{
     algo_bench_t* filter_benches;
     size_t filter_len;
     algo_bench_t* impz_benches;
@@ -190,6 +206,17 @@ parallel_bench(const parallel_input_t* input,
 
 bench_error_t
 parallel_bench_suite(const double input_coeffs[FILTER_ROWS][FILTER_COLS],
+                     algo_bench_t* benches,
+                     size_t len);
+
+bench_error_t
+feedback_bench(const feedback_input_t* input,
+               const expected_tf_t* output_correct,
+               algo_bench_t* benches,
+               size_t len);
+
+bench_error_t
+feedback_bench_suite(const double input_coeffs[FILTER_ROWS][FILTER_COLS],
                      algo_bench_t* benches,
                      size_t len);
 

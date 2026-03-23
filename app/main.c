@@ -45,7 +45,7 @@ main()
     } else if ((input_data = malloc(sizeof(double) * BUF_SIZE)) == NULL) {
         printf("Error allocating input data buffer.");
         status = BENCH_EALLOC;
-    } else if (read_file_to_buffer("./data/input/signal_small.csv",
+    } else if (read_file_to_buffer("./data/input/signal_medium.csv",
                                    input_data,
                                    &num_of_input) != 0) {
         printf("Failed to load input data.");

@@ -46,7 +46,8 @@ _print_bench_section(const char* section_name,
 
 // A function pointer type that unpacks a void* context and runs the generic
 // function
-typedef void (*runner_wrapper_t)(void* ctx, generic_fn_t func);
+typedef void (*runner_fn_t)(void* ctx, generic_fn_t func);
+typedef bool (*checker_fn_t)(const void* ctx, const void* expected_data);
 
 /*
  * The universal benchmarking loop.
@@ -54,12 +55,11 @@ typedef void (*runner_wrapper_t)(void* ctx, generic_fn_t func);
  */
 static void
 _run_generic_bench(void* ctx,
-                   double* out_buffer,
-                   size_t out_len,
-                   const double* output_correct,
+                   const void* output_correct,
                    algo_bench_t* benches,
                    size_t benches_len,
-                   runner_wrapper_t runner)
+                   runner_fn_t runner,
+                   checker_fn_t checker)
 {
     for (size_t i = 0; i < benches_len; ++i) {
         clock_t tic = clock();
@@ -70,7 +70,7 @@ _run_generic_bench(void* ctx,
 
         clock_t toc = clock();
 
-        bool algo_res = _is_buffers_equal(out_buffer, output_correct, out_len);
+        bool algo_res = checker(ctx, output_correct);
 
         benches[i].state = algo_res ? BENCH_SUCCESS : BENCH_FAILED;
         benches[i].duration = (double)(toc - tic) / CLOCKS_PER_SEC;
@@ -94,6 +94,15 @@ _filter_runner(void* ctx, generic_fn_t func)
                         input->y);
 }
 
+static bool
+_filter_checker(const void* ctx, const void* output_correct)
+{
+    const filter_input_t* input = (const filter_input_t*)ctx;
+    const expected_1d_t* expected = (const expected_1d_t*)output_correct;
+
+    return _is_buffers_equal(input->y, expected->data, expected->len);
+}
+
 static void
 _impz_runner(void* ctx, generic_fn_t func)
 {
@@ -102,12 +111,104 @@ _impz_runner(void* ctx, generic_fn_t func)
       input->b, input->b_len, input->a, input->a_len, input->y, input->y_len);
 }
 
+static bool
+_impz_checker(const void* ctx, const void* output_correct)
+{
+    const impz_input_t* input = (const impz_input_t*)ctx;
+    const expected_1d_t* expected = (const expected_1d_t*)output_correct;
+
+    return _is_buffers_equal(input->y, expected->data, expected->len);
+}
+
 static void
 _conv_runner(void* ctx, generic_fn_t func)
 {
     const conv_input_t* input = (const conv_input_t*)ctx;
     ((conv_fn_t)func)(
       input->u, input->u_len, input->v, input->v_len, input->y, input->y_len);
+}
+
+static bool
+_conv_checker(const void* ctx, const void* output_correct)
+{
+    const conv_input_t* input = (const conv_input_t*)ctx;
+    const expected_1d_t* expected = (const expected_1d_t*)output_correct;
+
+    return _is_buffers_equal(input->y, expected->data, expected->len);
+}
+
+static void
+_series_runner(void* ctx, generic_fn_t func)
+{
+    const series_input_t* input = (const series_input_t*)ctx;
+    ((series_fn_t)func)(input->sys1_n,
+                        input->sys1_n_len,
+                        input->sys1_d,
+                        input->sys1_d_len,
+                        input->sys2_n,
+                        input->sys2_n_len,
+                        input->sys2_d,
+                        input->sys2_d_len,
+                        input->sys_out_n,
+                        input->sys_out_n_len,
+                        input->sys_out_d,
+                        input->sys_out_d_len);
+}
+
+static bool
+_series_checker(const void* ctx, const void* expected_data)
+{
+    bool result = true;
+    const series_input_t* input = (const series_input_t*)ctx;
+    const expected_tf_t* expected = (const expected_tf_t*)expected_data;
+
+    if (input->sys_out_n_len != expected->n_len ||
+        input->sys_out_d_len != expected->d_len) {
+        result = false;
+    } else {
+        result =
+          _is_buffers_equal(input->sys_out_n, expected->n, expected->n_len) &&
+          _is_buffers_equal(input->sys_out_d, expected->d, expected->d_len);
+    }
+
+    return result;
+}
+
+static void
+_parallel_runner(void* ctx, generic_fn_t func)
+{
+    const parallel_input_t* input = (const parallel_input_t*)ctx;
+    ((parallel_fn_t)func)(input->sys1_n,
+                          input->sys1_n_len,
+                          input->sys1_d,
+                          input->sys1_d_len,
+                          input->sys2_n,
+                          input->sys2_n_len,
+                          input->sys2_d,
+                          input->sys2_d_len,
+                          input->sys_out_n,
+                          input->sys_out_n_len,
+                          input->sys_out_d,
+                          input->sys_out_d_len);
+}
+
+static bool
+_parallel_checker(const void* ctx, const void* expected_data)
+{
+    bool result = true;
+    const parallel_input_t* input = (const parallel_input_t*)ctx;
+    const expected_tf_t* expected = (const expected_tf_t*)expected_data;
+
+    if (input->sys_out_n_len != expected->n_len ||
+        input->sys_out_d_len != expected->d_len) {
+        result = false;
+    } else {
+        result =
+          _is_buffers_equal(input->sys_out_n, expected->n, expected->n_len) &&
+          _is_buffers_equal(input->sys_out_d, expected->d, expected->d_len);
+    }
+
+    return result;
 }
 
 // -----------------------------------------------------------------------------
@@ -145,10 +246,13 @@ bench_print_table(const bench_result_t* result)
     _print_bench_section("filter", result->filter_benches, result->filter_len);
     _print_bench_section("impz", result->impz_benches, result->impz_len);
     _print_bench_section("conv", result->conv_benches, result->conv_len);
+    _print_bench_section("series", result->series_benches, result->series_len);
+    _print_bench_section(
+      "parallel", result->parallel_benches, result->parallel_len);
 }
 
 algo_bench_t
-init_algo_bench(const char* algo_name, const generic_fn_t fn)
+algo_bench_init(const char* algo_name, const generic_fn_t fn)
 {
     algo_bench_t bench = { algo_name, fn, BENCH_NOT_RAN, 0.0 };
     return bench;
@@ -156,49 +260,76 @@ init_algo_bench(const char* algo_name, const generic_fn_t fn)
 
 bench_error_t
 filter_bench(const filter_input_t* input,
-             const double* output_correct,
+             const expected_1d_t* output_correct,
              algo_bench_t* benches,
-             size_t benches_len)
+             size_t len)
 {
     _run_generic_bench((void*)input,
-                       input->y,
-                       input->x_len,
-                       output_correct,
+                       (const void*)output_correct,
                        benches,
-                       benches_len,
-                       _filter_runner);
+                       len,
+                       _filter_runner,
+                       _filter_checker);
     return BENCH_EOK;
 }
 
 bench_error_t
 impz_bench(const impz_input_t* input,
-           const double* output_correct,
+           const expected_1d_t* output_correct,
            algo_bench_t* benches,
-           size_t benches_len)
+           size_t len)
 {
     _run_generic_bench((void*)input,
-                       input->y,
-                       input->y_len,
-                       output_correct,
+                       (const void*)output_correct,
                        benches,
-                       benches_len,
-                       _impz_runner);
+                       len,
+                       _impz_runner,
+                       _impz_checker);
     return BENCH_EOK;
 }
 
 bench_error_t
 conv_bench(const conv_input_t* input,
-           const double* output_correct,
+           const expected_1d_t* output_correct,
            algo_bench_t* benches,
-           size_t benches_len)
+           size_t len)
 {
     _run_generic_bench((void*)input,
-                       input->y,
-                       input->y_len,
-                       output_correct,
+                       (const void*)output_correct,
                        benches,
-                       benches_len,
-                       _conv_runner);
+                       len,
+                       _conv_runner,
+                       _conv_checker);
+    return BENCH_EOK;
+}
+
+bench_error_t
+series_bench(const series_input_t* input,
+             const expected_tf_t* output_correct,
+             algo_bench_t* benches,
+             size_t len)
+{
+    _run_generic_bench((void*)input,
+                       (const void*)output_correct,
+                       benches,
+                       len,
+                       _series_runner,
+                       _series_checker);
+    return BENCH_EOK;
+}
+
+bench_error_t
+parallel_bench(const parallel_input_t* input,
+               const expected_tf_t* output_correct,
+               algo_bench_t* benches,
+               size_t len)
+{
+    _run_generic_bench((void*)input,
+                       (const void*)output_correct,
+                       benches,
+                       len,
+                       _parallel_runner,
+                       _parallel_checker);
     return BENCH_EOK;
 }
 
@@ -225,8 +356,9 @@ filter_bench_suite(const double coeffs[FILTER_ROWS][FILTER_COLS],
             coeffs[0],           FILTER_COLS, coeffs[1], FILTER_COLS,
             (double*)input_data, input_len,   output
         };
+        expected_1d_t expected_out = { output_correct, num_correct };
 
-        filter_bench(&filter_input, output_correct, benches, benches_len);
+        filter_bench(&filter_input, &expected_out, benches, benches_len);
     }
 
     free(output_correct);
@@ -242,8 +374,9 @@ impz_bench_suite(const double coeffs[FILTER_ROWS][FILTER_COLS],
 {
     bench_error_t status = BENCH_EOK;
     size_t num_correct = 0;
-    double* output_correct = malloc(sizeof(double) * IMPZ_OUT_LEN);
-    double* output = malloc(sizeof(double) * IMPZ_OUT_LEN);
+    size_t out_len = sizeof(double) * IMPZ_OUT_LEN;
+    double* output_correct = malloc(out_len);
+    double* output = malloc(out_len);
 
     if (!output_correct || !output) {
         status = BENCH_EALLOC;
@@ -254,8 +387,9 @@ impz_bench_suite(const double coeffs[FILTER_ROWS][FILTER_COLS],
     } else {
         impz_input_t impz_input = { coeffs[0],   FILTER_COLS, coeffs[1],
                                     FILTER_COLS, output,      IMPZ_OUT_LEN };
+        expected_1d_t expected_out = { output_correct, num_correct };
 
-        impz_bench(&impz_input, output_correct, benches, benches_len);
+        impz_bench(&impz_input, &expected_out, benches, benches_len);
     }
 
     free(output_correct);
@@ -298,13 +432,109 @@ conv_bench_suite(const double* input_data,
             input_data,  input_len, impz_input,
             impz_in_len, output,    CONV_FULL_LEN(input_len, impz_in_len)
         };
+        expected_1d_t expected_out = { output_correct, num_correct };
 
-        conv_bench(&conv_input, output_correct, benches, len);
+        conv_bench(&conv_input, &expected_out, benches, len);
     }
 
     free(output_correct);
     free(output);
     free(impz_input);
+
+    return status;
+}
+
+bench_error_t
+series_bench_suite(const double input_coeffs[FILTER_ROWS][FILTER_COLS],
+                   algo_bench_t* benches,
+                   size_t len)
+{
+    bench_error_t status = BENCH_EOK;
+    size_t num_correct_n = 0;
+    size_t num_correct_d = 0;
+    size_t expected_out_len = CONV_FULL_LEN(FILTER_COLS, FILTER_COLS);
+
+    double* output_correct_n = malloc(sizeof(double) * expected_out_len);
+    double* output_correct_d = malloc(sizeof(double) * expected_out_len);
+    double* output_n = malloc(sizeof(double) * expected_out_len);
+    double* output_d = malloc(sizeof(double) * expected_out_len);
+
+    if (!output_correct_n || !output_correct_d || !output_n || !output_d) {
+        status = BENCH_EALLOC;
+    } else if (read_file_to_buffer("./data/output/series_result_n.csv",
+                                   output_correct_n,
+                                   &num_correct_n) != 0) {
+        status = BENCH_EFILE;
+    } else if (read_file_to_buffer("./data/output/series_result_d.csv",
+                                   output_correct_d,
+                                   &num_correct_d) != 0) {
+        status = BENCH_EFILE;
+    } else {
+        series_input_t series_input = {
+            input_coeffs[0], FILTER_COLS,   input_coeffs[1], FILTER_COLS,
+            input_coeffs[2], FILTER_COLS,   input_coeffs[3], FILTER_COLS,
+            output_n,        expected_out_len, output_d,        expected_out_len
+        };
+
+        expected_tf_t expected = {
+            output_correct_n, expected_out_len, output_correct_d, expected_out_len
+        };
+
+        series_bench(&series_input, &expected, benches, len);
+    }
+
+    free(output_correct_n);
+    free(output_correct_d);
+    free(output_n);
+    free(output_d);
+
+    return status;
+}
+
+bench_error_t
+parallel_bench_suite(const double input_coeffs[FILTER_ROWS][FILTER_COLS],
+                     algo_bench_t* benches,
+                     size_t len)
+{
+    bench_error_t status = BENCH_EOK;
+    size_t num_correct_n = 0;
+    size_t num_correct_d = 0;
+
+    size_t expected_output_len = CONV_FULL_LEN(FILTER_COLS, FILTER_COLS);
+
+    double* output_correct_n = malloc(sizeof(double) * expected_output_len);
+    double* output_correct_d = malloc(sizeof(double) * expected_output_len);
+    double* output_n = malloc(sizeof(double) * expected_output_len);
+    double* output_d = malloc(sizeof(double) * expected_output_len);
+
+    if (!output_correct_n || !output_correct_d || !output_n || !output_d) {
+        status = BENCH_EALLOC;
+    } else if (read_file_to_buffer("./data/output/parallel_result_n.csv",
+                                   output_correct_n,
+                                   &num_correct_n) != 0) {
+        status = BENCH_EFILE;
+    } else if (read_file_to_buffer("./data/output/parallel_result_d.csv",
+                                   output_correct_d,
+                                   &num_correct_d) != 0) {
+        status = BENCH_EFILE;
+    } else {
+        parallel_input_t parallel_input = {
+            input_coeffs[0], FILTER_COLS,   input_coeffs[1], FILTER_COLS,
+            input_coeffs[2], FILTER_COLS,   input_coeffs[3], FILTER_COLS,
+            output_n,        expected_output_len, output_d,        expected_output_len
+        };
+
+        expected_tf_t expected_output = {
+            output_correct_n, expected_output_len, output_correct_d, expected_output_len
+        };
+
+        parallel_bench(&parallel_input, &expected_output, benches, len);
+    }
+
+    free(output_correct_n);
+    free(output_correct_d);
+    free(output_n);
+    free(output_d);
 
     return status;
 }

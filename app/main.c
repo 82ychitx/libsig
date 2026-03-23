@@ -17,17 +17,25 @@ main()
     double filter_coeffs[FILTER_ROWS][FILTER_COLS] = { 0 };
 
     algo_bench_t filter_benches[] = {
-        init_algo_bench("Form 1", (generic_fn_t)filter_naive_ternary),
-        init_algo_bench("Split loops", (generic_fn_t)filter_split_loops),
+        algo_bench_init("Form 1", (generic_fn_t)filter_naive_ternary),
+        algo_bench_init("Split loops", (generic_fn_t)filter_split_loops),
     };
 
     algo_bench_t impz_benches[] = {
-        init_algo_bench("Alloc buf", (generic_fn_t)impz),
+        algo_bench_init("Alloc buf", (generic_fn_t)impz),
     };
 
     algo_bench_t conv_benches[] = {
-        init_algo_bench("Naive", (generic_fn_t)conv_naive),
-        init_algo_bench("Bounded", (generic_fn_t)conv_bounded),
+        algo_bench_init("Naive", (generic_fn_t)conv_naive),
+        algo_bench_init("Bounded", (generic_fn_t)conv_bounded),
+    };
+
+    algo_bench_t series_benches[] = {
+        algo_bench_init("Naive", (generic_fn_t)series_naive),
+    };
+
+    algo_bench_t parallel_benches[] = {
+        algo_bench_init("Naive", (generic_fn_t)parallel_naive),
     };
 
     if (load_filter_coeffs("./data/input/filter_coeffs.csv", filter_coeffs) !=
@@ -59,11 +67,19 @@ main()
                                           ALGO_BENCH_LEN(conv_benches))) !=
                BENCH_EOK) {
         printf("Error running conv benches.");
+    } else if ((status = series_bench_suite(filter_coeffs, series_benches, ALGO_BENCH_LEN(series_benches))) != BENCH_EOK) {
+        printf("Error running series benches.");
+    } else if ((status = parallel_bench_suite(filter_coeffs, parallel_benches, ALGO_BENCH_LEN(parallel_benches))) != BENCH_EOK) {
+        printf("Error running parallel benches.");
     } else {
 
-        bench_result_t bench = { filter_benches, ALGO_BENCH_LEN(filter_benches),
-                                 impz_benches,   ALGO_BENCH_LEN(impz_benches),
-                                 conv_benches,   ALGO_BENCH_LEN(conv_benches) };
+        bench_result_t bench = {
+            filter_benches,   ALGO_BENCH_LEN(filter_benches),
+            impz_benches,     ALGO_BENCH_LEN(impz_benches),
+            conv_benches,     ALGO_BENCH_LEN(conv_benches),
+            series_benches,   ALGO_BENCH_LEN(series_benches),
+            parallel_benches, ALGO_BENCH_LEN(parallel_benches)
+        };
 
         bench_print_table(&bench);
     }

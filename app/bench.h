@@ -29,6 +29,20 @@ typedef void (*generic_fn_t)(void);
 
 typedef struct
 {
+    const double* data;
+    size_t len;
+} expected_1d_t;
+
+typedef struct
+{
+    const double* n;
+    size_t n_len;
+    const double* d;
+    size_t d_len;
+} expected_tf_t;
+
+typedef struct
+{
     const char* algo_name;
     generic_fn_t func;
     bench_state_t state;
@@ -68,12 +82,48 @@ typedef struct
 
 typedef struct
 {
+    const double* sys1_n;
+    size_t sys1_n_len;
+    const double* sys1_d;
+    size_t sys1_d_len;
+    const double* sys2_n;
+    size_t sys2_n_len;
+    const double* sys2_d;
+    size_t sys2_d_len;
+    double* sys_out_n;
+    size_t sys_out_n_len;
+    double* sys_out_d;
+    size_t sys_out_d_len;
+} series_input_t;
+
+typedef struct
+{
+    const double* sys1_n;
+    size_t sys1_n_len;
+    const double* sys1_d;
+    size_t sys1_d_len;
+    const double* sys2_n;
+    size_t sys2_n_len;
+    const double* sys2_d;
+    size_t sys2_d_len;
+    double* sys_out_n;
+    size_t sys_out_n_len;
+    double* sys_out_d;
+    size_t sys_out_d_len;
+} parallel_input_t;
+
+typedef struct
+{
     algo_bench_t* filter_benches;
     size_t filter_len;
     algo_bench_t* impz_benches;
     size_t impz_len;
     algo_bench_t* conv_benches;
     size_t conv_len;
+    algo_bench_t* series_benches;
+    size_t series_len;
+    algo_bench_t* parallel_benches;
+    size_t parallel_len;
 } bench_result_t;
 
 const char*
@@ -83,11 +133,11 @@ void
 bench_print_table(const bench_result_t* result);
 
 algo_bench_t
-init_algo_bench(const char* algo_name, const generic_fn_t fn);
+algo_bench_init(const char* algo_name, const generic_fn_t fn);
 
 bench_error_t
 filter_bench(const filter_input_t* input,
-             const double* output_correct,
+             const expected_1d_t* output_correct,
              algo_bench_t* benches,
              size_t len);
 
@@ -100,7 +150,7 @@ filter_bench_suite(const double coeffs[FILTER_ROWS][FILTER_COLS],
 
 bench_error_t
 impz_bench(const impz_input_t* input,
-           const double* output_correct,
+           const expected_1d_t* output_correct,
            algo_bench_t* benches,
            size_t len);
 
@@ -111,7 +161,7 @@ impz_bench_suite(const double coeffs[FILTER_ROWS][FILTER_COLS],
 
 bench_error_t
 conv_bench(const conv_input_t* input,
-           const double* output_correct,
+           const expected_1d_t* output_correct,
            algo_bench_t* benches,
            size_t len);
 
@@ -120,5 +170,27 @@ conv_bench_suite(const double* input_data,
                  size_t input_len,
                  algo_bench_t* benches,
                  size_t len);
+
+bench_error_t
+series_bench(const series_input_t* input,
+             const expected_tf_t* output_correct,
+             algo_bench_t* benches,
+             size_t len);
+
+bench_error_t
+series_bench_suite(const double input_coeffs[FILTER_ROWS][FILTER_COLS],
+                   algo_bench_t* benches,
+                   size_t len);
+
+bench_error_t
+parallel_bench(const parallel_input_t* input,
+               const expected_tf_t* output_correct,
+               algo_bench_t* benches,
+               size_t len);
+
+bench_error_t
+parallel_bench_suite(const double input_coeffs[FILTER_ROWS][FILTER_COLS],
+                     algo_bench_t* benches,
+                     size_t len);
 
 #endif // BENCH_H_

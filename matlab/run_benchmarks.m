@@ -78,11 +78,16 @@ time_freqz = toc;
 tic;
 [b_series, a_series] = series(b1, a1, b2, a2);
 time_series = toc;
+writematrix(b_series', '../data/output/series_result_n.csv');
+writematrix(a_series', '../data/output/series_result_d.csv');
+
 
 % 5. Funkce PARALLEL (Paralelní řazení dvou filtrů)
 tic;
 [b_parallel, a_parallel] = parallel(b1, a1, b2, a2);
 time_parallel = toc;
+writematrix(b_parallel', '../data/output/parallel_result_n.csv');
+writematrix(a_parallel', '../data/output/parallel_result_d.csv');
 
 % 6. Funkce FEEDBACK (Zpětnovazební spojení dvou filtrů)
 tic;

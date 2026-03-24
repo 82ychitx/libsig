@@ -294,3 +294,61 @@ parallel_naive(const double* sys1_n,
 
     return result;
 }
+
+libsig_error_t
+feedback_naive(const double* sys1_n,
+               size_t sys1_n_len,
+               const double* sys1_d,
+               size_t sys1_d_len,
+               const double* sys2_n,
+               size_t sys2_n_len,
+               const double* sys2_d,
+               size_t sys2_d_len,
+               double* sys_out_n,
+               size_t sys_out_n_len,
+               double* sys_out_d,
+               size_t sys_out_d_len)
+{
+    libsig_error_t result = LIBSIG_EOK;
+    double *p1, *p2;
+    size_t p1_len = CONV_FULL_LEN(sys1_n_len, sys2_n_len);
+    size_t p2_len = CONV_FULL_LEN(sys2_d_len, sys1_d_len);
+    size_t out_num_len = MAX(p1_len, p2_len);
+
+    if (sys_out_n_len != CONV_FULL_LEN(sys1_n_len, sys2_n_len) ||
+        sys_out_d_len != out_num_len) {
+        result = LIBSIG_EINVALID_INPUT;
+    } else if ((p1 = calloc(out_num_len, sizeof(double))) == NULL) {
+        result = LIBSIG_ERR;
+    } else if ((p2 = calloc(out_num_len, sizeof(double))) == NULL) {
+        free(p1);
+        result = LIBSIG_ERR;
+    } else {
+        if (conv_naive(sys1_n,
+                       sys1_n_len,
+                       sys2_d,
+                       sys2_d_len,
+                       sys_out_n,
+                       sys_out_n_len) != LIBSIG_EOK) {
+            result = LIBSIG_ERR;
+        } else if (conv_naive(
+                     sys1_n, sys1_n_len, sys2_n, sys2_n_len, p1, p1_len) !=
+                   LIBSIG_EOK) {
+            result = LIBSIG_ERR;
+        } else if (conv_naive(
+                     sys1_d, sys1_d_len, sys2_d, sys2_d_len, p2, p2_len) !=
+                   LIBSIG_EOK) {
+            result = LIBSIG_ERR;
+        } else {
+            for (size_t i = 0; i < out_num_len; ++i) {
+                sys_out_d[i] = p1[(p1_len + i) % out_num_len] +
+                               p2[(p2_len + i) % out_num_len];
+            }
+        }
+
+        free(p1);
+        free(p2);
+    }
+
+    return result;
+}

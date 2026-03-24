@@ -285,7 +285,8 @@ bench_print_table(const bench_result_t* result)
     _print_bench_section("conv", result->conv_benches, result->conv_len);
     _print_bench_section("series", result->series_benches, result->series_len);
     _print_bench_section(
-      "parallel", result->parallel_benches, result->parallel_len);
+                         "parallel", result->parallel_benches, result->parallel_len);
+    _print_bench_section("feedback", result->feedback_benches, result->feedback_len);
 }
 
 algo_bench_t
@@ -514,7 +515,7 @@ series_bench_suite(const double input_coeffs[FILTER_ROWS][FILTER_COLS],
         };
 
         expected_tf_t expected = {
-            output_correct_n, expected_out_len, output_correct_d, expected_out_len
+            output_correct_n, num_correct_n, output_correct_d, num_correct_d
         };
 
         series_bench(&series_input, &expected, benches, len);
@@ -562,7 +563,7 @@ parallel_bench_suite(const double input_coeffs[FILTER_ROWS][FILTER_COLS],
         };
 
         expected_tf_t expected_output = {
-            output_correct_n, expected_output_len, output_correct_d, expected_output_len
+            output_correct_n, num_correct_n, output_correct_d, num_correct_d
         };
 
         parallel_bench(&parallel_input, &expected_output, benches, len);
@@ -625,7 +626,7 @@ feedback_bench_suite(const double input_coeffs[FILTER_ROWS][FILTER_COLS],
         };
 
         expected_tf_t expected_output = {
-            output_correct_n, expected_output_len, output_correct_d, expected_output_len
+            output_correct_n, num_correct_n, output_correct_d, num_correct_d
         };
 
         feedback_bench(&feedback_input, &expected_output, benches, len);

@@ -140,6 +140,8 @@ typedef struct
     size_t series_len;
     algo_bench_t* parallel_benches;
     size_t parallel_len;
+    algo_bench_t* feedback_benches;
+    size_t feedback_len;
 } bench_result_t;
 
 const char*

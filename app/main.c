@@ -38,6 +38,10 @@ main()
         algo_bench_init("Naive", (generic_fn_t)parallel_naive),
     };
 
+    algo_bench_t feedback_benches[] = {
+        algo_bench_init("Naive", (generic_fn_t)feedback_naive),
+    };
+
     if (load_filter_coeffs("./data/input/filter_coeffs.csv", filter_coeffs) !=
         0) {
         printf("Failed to load filter coefficients.");
@@ -67,10 +71,21 @@ main()
                                           ALGO_BENCH_LEN(conv_benches))) !=
                BENCH_EOK) {
         printf("Error running conv benches.");
-    } else if ((status = series_bench_suite(filter_coeffs, series_benches, ALGO_BENCH_LEN(series_benches))) != BENCH_EOK) {
+    } else if ((status = series_bench_suite(filter_coeffs,
+                                            series_benches,
+                                            ALGO_BENCH_LEN(series_benches))) !=
+               BENCH_EOK) {
         printf("Error running series benches.");
-    } else if ((status = parallel_bench_suite(filter_coeffs, parallel_benches, ALGO_BENCH_LEN(parallel_benches))) != BENCH_EOK) {
+    } else if ((status = parallel_bench_suite(
+                  filter_coeffs,
+                  parallel_benches,
+                  ALGO_BENCH_LEN(parallel_benches))) != BENCH_EOK) {
         printf("Error running parallel benches.");
+    } else if ((status = feedback_bench_suite(
+                  filter_coeffs,
+                  feedback_benches,
+                  ALGO_BENCH_LEN(feedback_benches))) != BENCH_EOK) {
+        printf("Error running feedback benches.");
     } else {
 
         bench_result_t bench = {
@@ -78,7 +93,8 @@ main()
             impz_benches,     ALGO_BENCH_LEN(impz_benches),
             conv_benches,     ALGO_BENCH_LEN(conv_benches),
             series_benches,   ALGO_BENCH_LEN(series_benches),
-            parallel_benches, ALGO_BENCH_LEN(parallel_benches)
+            parallel_benches, ALGO_BENCH_LEN(parallel_benches),
+            feedback_benches, ALGO_BENCH_LEN(feedback_benches),
         };
 
         bench_print_table(&bench);

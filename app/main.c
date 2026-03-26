@@ -63,6 +63,8 @@ main()
     } else if (input_cols != 1) {
         status = BENCH_EINVALID_INPUT;
     } else if ((status = filter_bench_suite(filter_coeffs,
+                                            filter_rows,
+                                            filter_cols,
                                             input_data,
                                             input_rows,
                                             filter_benches,

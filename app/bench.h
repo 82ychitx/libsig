@@ -177,7 +177,9 @@ filter_bench(const filter_input_t* input,
              size_t len);
 
 bench_error_t
-filter_bench_suite(const double coeffs[FILTER_ROWS][FILTER_COLS],
+filter_bench_suite(const double* coeffs,
+                   size_t coeffs_rows,
+                   size_t coeffs_cols,
                    const double* input_data,
                    size_t input_len,
                    algo_bench_t* benches,

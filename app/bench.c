@@ -352,21 +352,6 @@ algo_bench_init(const char* algo_name, const generic_fn_t fn)
 }
 
 bench_error_t
-filter_bench(const filter_input_t* input,
-             const expected_1d_t* output_correct,
-             algo_bench_t* benches,
-             size_t len)
-{
-    _run_generic_bench((void*)input,
-                       (const void*)output_correct,
-                       benches,
-                       len,
-                       _filter_runner,
-                       _filter_checker);
-    return BENCH_EOK;
-}
-
-bench_error_t
 impz_bench(const impz_input_t* input,
            const expected_1d_t* output_correct,
            algo_bench_t* benches,
@@ -427,6 +412,21 @@ parallel_bench(const parallel_input_t* input,
 }
 
 bench_error_t
+filter_bench(const filter_input_t* input,
+             const expected_1d_t* output_correct,
+             algo_bench_t* benches,
+             size_t len)
+{
+    _run_generic_bench((void*)input,
+                       (const void*)output_correct,
+                       benches,
+                       len,
+                       _filter_runner,
+                       _filter_checker);
+    return BENCH_EOK;
+}
+
+bench_error_t
 filter_bench_suite(const double* coeffs,
                    size_t coeffs_rows,
                    size_t coeffs_cols,
@@ -440,22 +440,29 @@ filter_bench_suite(const double* coeffs,
     double* correct_output;
     double* output;
 
-    if (file_io_read_double_matrix("./data/output/filter_result.csv", &correct_output, &correct_rows, &correct_cols) != FILE_IO_EOK) {
+    if (file_io_read_double_matrix("./data/output/filter_result.csv",
+                                   &correct_output,
+                                   &correct_rows,
+                                   &correct_cols) != FILE_IO_EOK) {
         status = BENCH_EFILE;
-    } else if ((output = malloc(sizeof(double) * input_len)) == NULL) {
-        status = BENCH_EALLOC;
     } else {
-        filter_input_t filter_input = {
-            coeffs[0], , coeffs[1], FILTER_COLS,
-            (double*)input_data, input_len,   output
-        };
-        expected_1d_t expected_out = { output_correct, num_correct };
+        if ((output = malloc(sizeof(double) * input_len)) == NULL) {
+            status = BENCH_EALLOC;
+        } else {
+            filter_input_t filter_input = {
+                &coeffs[0],  coeffs_cols, &coeffs[coeffs_cols],
+                coeffs_cols, input_data,  input_len,
+                output
+            };
+            expected_1d_t expected_out = { correct_output, correct_rows };
 
-        filter_bench(&filter_input, &expected_out, benches, benches_len);
+            filter_bench(&filter_input, &expected_out, benches, benches_len);
+            
+            free(output);
+        }
+        
+        free(correct_output);
     }
-
-    free(output_correct);
-    free(output);
 
     return status;
 }

@@ -1,7 +1,8 @@
 #include "bench.h"
+#include "file_io.h"
 #include "libsig.h"
-#include "main.h"
 
+#include <complex.h>
 #include <math.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -13,15 +14,49 @@
 // -----------------------------------------------------------------------------
 
 static bool
-_is_buffers_equal(const double* a, const double* b, size_t len)
+_is_double_buffs_equal(const double* a,
+                       size_t a_len,
+                       const double* b,
+                       size_t b_len)
 {
-    double epsilon = 1e-9;
-    for (size_t i = 0; i < len; ++i) {
-        if (fabs(a[i] - b[i]) > epsilon) {
-            return false;
+    bool result = true;
+
+    if (a_len != b_len) {
+        result = false;
+    } else {
+        double epsilon = 1e-9;
+        for (size_t i = 0; i < a_len; ++i) {
+            if (fabs(a[i] - b[i]) > epsilon) {
+                result = false;
+                break;
+            }
         }
     }
-    return true;
+
+    return result;
+}
+
+static bool
+_is_complex_buffs_equal(const double complex* a,
+                        size_t a_len,
+                        const double complex* b,
+                        size_t b_len)
+{
+    bool result = true;
+
+    if (a_len != b_len) {
+        result = false;
+    } else {
+        double epsilon = 1e-9;
+        for (size_t i = 0; i < a_len; ++i) {
+            if (cabs(a[i] - b[i]) > epsilon) {
+                result = false;
+                break;
+            }
+        }
+    }
+
+    return result;
 }
 
 static void
@@ -100,7 +135,8 @@ _filter_checker(const void* ctx, const void* output_correct)
     const filter_input_t* input = (const filter_input_t*)ctx;
     const expected_1d_t* expected = (const expected_1d_t*)output_correct;
 
-    return _is_buffers_equal(input->y, expected->data, expected->len);
+    return _is_double_buffs_equal(
+      input->y, input->x_len, expected->data, expected->len);
 }
 
 static void
@@ -117,7 +153,8 @@ _impz_checker(const void* ctx, const void* output_correct)
     const impz_input_t* input = (const impz_input_t*)ctx;
     const expected_1d_t* expected = (const expected_1d_t*)output_correct;
 
-    return _is_buffers_equal(input->y, expected->data, expected->len);
+    return _is_double_buffs_equal(
+      input->y, input->y_len, expected->data, expected->len);
 }
 
 static void
@@ -134,7 +171,8 @@ _conv_checker(const void* ctx, const void* output_correct)
     const conv_input_t* input = (const conv_input_t*)ctx;
     const expected_1d_t* expected = (const expected_1d_t*)output_correct;
 
-    return _is_buffers_equal(input->y, expected->data, expected->len);
+    return _is_double_buffs_equal(
+      input->y, input->y_len, expected->data, expected->len);
 }
 
 static void
@@ -166,9 +204,14 @@ _series_checker(const void* ctx, const void* expected_data)
         input->sys_out_d_len != expected->d_len) {
         result = false;
     } else {
-        result =
-          _is_buffers_equal(input->sys_out_n, expected->n, expected->n_len) &&
-          _is_buffers_equal(input->sys_out_d, expected->d, expected->d_len);
+        result = _is_double_buffs_equal(input->sys_out_n,
+                                        input->sys_out_n_len,
+                                        expected->n,
+                                        expected->n_len) &&
+                 _is_double_buffs_equal(input->sys_out_d,
+                                        input->sys_out_d_len,
+                                        expected->d,
+                                        expected->d_len);
     }
 
     return result;
@@ -203,9 +246,14 @@ _parallel_checker(const void* ctx, const void* expected_data)
         input->sys_out_d_len != expected->d_len) {
         result = false;
     } else {
-        result =
-          _is_buffers_equal(input->sys_out_n, expected->n, expected->n_len) &&
-          _is_buffers_equal(input->sys_out_d, expected->d, expected->d_len);
+        result = _is_double_buffs_equal(input->sys_out_n,
+                                        input->sys_out_n_len,
+                                        expected->n,
+                                        expected->n_len) &&
+                 _is_double_buffs_equal(input->sys_out_d,
+                                        input->sys_out_d_len,
+                                        expected->d,
+                                        expected->d_len);
     }
 
     return result;
@@ -240,9 +288,14 @@ _feedback_checker(const void* ctx, const void* expected_data)
         input->sys_out_d_len != expected->d_len) {
         result = false;
     } else {
-        result =
-          _is_buffers_equal(input->sys_out_n, expected->n, expected->n_len) &&
-          _is_buffers_equal(input->sys_out_d, expected->d, expected->d_len);
+        result = _is_double_buffs_equal(input->sys_out_n,
+                                        input->sys_out_n_len,
+                                        expected->n,
+                                        expected->n_len) &&
+                 _is_double_buffs_equal(input->sys_out_d,
+                                        input->sys_out_d_len,
+                                        expected->d,
+                                        expected->d_len);
     }
 
     return result;
@@ -285,8 +338,10 @@ bench_print_table(const bench_result_t* result)
     _print_bench_section("conv", result->conv_benches, result->conv_len);
     _print_bench_section("series", result->series_benches, result->series_len);
     _print_bench_section(
-                         "parallel", result->parallel_benches, result->parallel_len);
-    _print_bench_section("feedback", result->feedback_benches, result->feedback_len);
+      "parallel", result->parallel_benches, result->parallel_len);
+    _print_bench_section(
+      "feedback", result->feedback_benches, result->feedback_len);
+    _print_bench_section("freqz", result->freqz_benches, result->freqz_len);
 }
 
 algo_bench_t
@@ -372,26 +427,26 @@ parallel_bench(const parallel_input_t* input,
 }
 
 bench_error_t
-filter_bench_suite(const double coeffs[FILTER_ROWS][FILTER_COLS],
+filter_bench_suite(const double* coeffs,
+                   size_t coeffs_rows,
+                   size_t coeffs_cols,
                    const double* input_data,
                    size_t input_len,
                    algo_bench_t* benches,
                    size_t benches_len)
 {
     bench_error_t status = BENCH_EOK;
-    size_t num_correct = 0;
-    double* output_correct = malloc(sizeof(double) * BUF_SIZE);
-    double* output = malloc(sizeof(double) * input_len);
+    size_t correct_rows, correct_cols;
+    double* correct_output;
+    double* output;
 
-    if (!output_correct || !output) {
-        status = BENCH_EALLOC;
-    } else if (read_file_to_buffer("./data/output/filter_result.csv",
-                                   output_correct,
-                                   &num_correct) != 0) {
+    if (file_io_read_double_matrix("./data/output/filter_result.csv", &correct_output, &correct_rows, &correct_cols) != FILE_IO_EOK) {
         status = BENCH_EFILE;
+    } else if ((output = malloc(sizeof(double) * input_len)) == NULL) {
+        status = BENCH_EALLOC;
     } else {
         filter_input_t filter_input = {
-            coeffs[0],           FILTER_COLS, coeffs[1], FILTER_COLS,
+            coeffs[0], , coeffs[1], FILTER_COLS,
             (double*)input_data, input_len,   output
         };
         expected_1d_t expected_out = { output_correct, num_correct };
@@ -509,8 +564,8 @@ series_bench_suite(const double input_coeffs[FILTER_ROWS][FILTER_COLS],
         status = BENCH_EFILE;
     } else {
         series_input_t series_input = {
-            input_coeffs[0], FILTER_COLS,   input_coeffs[1], FILTER_COLS,
-            input_coeffs[2], FILTER_COLS,   input_coeffs[3], FILTER_COLS,
+            input_coeffs[0], FILTER_COLS,      input_coeffs[1], FILTER_COLS,
+            input_coeffs[2], FILTER_COLS,      input_coeffs[3], FILTER_COLS,
             output_n,        expected_out_len, output_d,        expected_out_len
         };
 
@@ -557,9 +612,10 @@ parallel_bench_suite(const double input_coeffs[FILTER_ROWS][FILTER_COLS],
         status = BENCH_EFILE;
     } else {
         parallel_input_t parallel_input = {
-            input_coeffs[0], FILTER_COLS,   input_coeffs[1], FILTER_COLS,
-            input_coeffs[2], FILTER_COLS,   input_coeffs[3], FILTER_COLS,
-            output_n,        expected_output_len, output_d,        expected_output_len
+            input_coeffs[0],     FILTER_COLS,     input_coeffs[1],
+            FILTER_COLS,         input_coeffs[2], FILTER_COLS,
+            input_coeffs[3],     FILTER_COLS,     output_n,
+            expected_output_len, output_d,        expected_output_len
         };
 
         expected_tf_t expected_output = {
@@ -620,9 +676,10 @@ feedback_bench_suite(const double input_coeffs[FILTER_ROWS][FILTER_COLS],
         status = BENCH_EFILE;
     } else {
         feedback_input_t feedback_input = {
-            input_coeffs[0], FILTER_COLS,   input_coeffs[1], FILTER_COLS,
-            input_coeffs[2], FILTER_COLS,   input_coeffs[3], FILTER_COLS,
-            output_n,        expected_output_len, output_d,        expected_output_len
+            input_coeffs[0],     FILTER_COLS,     input_coeffs[1],
+            FILTER_COLS,         input_coeffs[2], FILTER_COLS,
+            input_coeffs[3],     FILTER_COLS,     output_n,
+            expected_output_len, output_d,        expected_output_len
         };
 
         expected_tf_t expected_output = {
@@ -638,5 +695,21 @@ feedback_bench_suite(const double input_coeffs[FILTER_ROWS][FILTER_COLS],
     free(output_d);
 
     return status;
+}
 
+bench_error_t
+freqz_bench(const freqz_input_t* input,
+            const expected_1d_complex_t* output_correct,
+            algo_bench_t* benches,
+            size_t len)
+{
+}
+
+bench_error_t
+freqz_bench_suite(const double* input_coeffs,
+                  size_t coeffs_rows,
+                  size_t coeffs_cols,
+                  algo_bench_t* benches,
+                  size_t len)
+{
 }

@@ -2,10 +2,8 @@
 #define BENCH_H_
 
 #include "libsig.h"
-#include "main.h"
 
 #define ALGO_BENCH_LEN(p_benches) (sizeof((p_benches)) / sizeof(algo_bench_t))
-#define IMPZ_OUT_LEN 100
 
 typedef enum
 {
@@ -32,6 +30,12 @@ typedef struct
     const double* data;
     size_t len;
 } expected_1d_t;
+
+typedef struct
+{
+    const double complex* data;
+    size_t len;
+} expected_1d_complex_t;
 
 typedef struct
 {
@@ -130,6 +134,17 @@ typedef struct
 
 typedef struct
 {
+    const double* b;
+    size_t b_len;
+    const double* a;
+    size_t a_len;
+    const double* w;
+    size_t w_len;
+    double complex* h
+} freqz_input_t;
+
+typedef struct
+{
     algo_bench_t* filter_benches;
     size_t filter_len;
     algo_bench_t* impz_benches;
@@ -142,6 +157,8 @@ typedef struct
     size_t parallel_len;
     algo_bench_t* feedback_benches;
     size_t feedback_len;
+    algo_bench_t* freqz_benches;
+    size_t freqz_len;
 } bench_result_t;
 
 const char*
@@ -173,7 +190,9 @@ impz_bench(const impz_input_t* input,
            size_t len);
 
 bench_error_t
-impz_bench_suite(const double coeffs[FILTER_ROWS][FILTER_COLS],
+impz_bench_suite(const double* coeffs,
+                 size_t coeffs_rows,
+                 size_t coeffs_cols,
                  algo_bench_t* benches,
                  size_t benches_len);
 
@@ -196,7 +215,9 @@ series_bench(const series_input_t* input,
              size_t len);
 
 bench_error_t
-series_bench_suite(const double input_coeffs[FILTER_ROWS][FILTER_COLS],
+series_bench_suite(const double* input_coeffs,
+                   size_t coeffs_rows,
+                   size_t coeffs_cols,
                    algo_bench_t* benches,
                    size_t len);
 
@@ -207,7 +228,9 @@ parallel_bench(const parallel_input_t* input,
                size_t len);
 
 bench_error_t
-parallel_bench_suite(const double input_coeffs[FILTER_ROWS][FILTER_COLS],
+parallel_bench_suite(const double* input_coeffs,
+                     size_t coeffs_rows,
+                     size_t coeffs_cols,
                      algo_bench_t* benches,
                      size_t len);
 
@@ -218,8 +241,23 @@ feedback_bench(const feedback_input_t* input,
                size_t len);
 
 bench_error_t
-feedback_bench_suite(const double input_coeffs[FILTER_ROWS][FILTER_COLS],
+feedback_bench_suite(const double* input_coeffs,
+                     size_t coeffs_rows,
+                     size_t coeffs_cols,
                      algo_bench_t* benches,
                      size_t len);
+
+bench_error_t
+freqz_bench(const freqz_input_t* input,
+            const expected_1d_complex_t* output_correct,
+            algo_bench_t* benches,
+            size_t len);
+
+bench_error_t
+freqz_bench_suite(const double* input_coeffs,
+                  size_t coeffs_rows,
+                  size_t coeffs_cols,
+                  algo_bench_t* benches,
+                  size_t len);
 
 #endif // BENCH_H_

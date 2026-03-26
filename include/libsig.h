@@ -1,8 +1,9 @@
 #ifndef LIBSIG_H_
 #define LIBSIG_H_
 
-
+#include <complex.h>
 #include <stddef.h>
+
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
@@ -103,7 +104,7 @@ typedef libsig_error_t (*series_fn_t)(const double* sys1_n,
                                       size_t sys_out_n_len,
                                       double* sys_out_d,
                                       size_t sys_out_d_len);
-                                      
+
 libsig_error_t
 series_naive(const double* sys1_n,
              size_t sys1_n_len,
@@ -173,5 +174,23 @@ feedback_naive(const double* sys1_n,
                size_t sys_out_n_len,
                double* sys_out_d,
                size_t sys_out_d_len);
+
+// ========================== FREQZ ==========================
+typedef libsig_error_t (*freqz_fn_t)(const double* b,
+                                     size_t b_len,
+                                     const double* a,
+                                     size_t a_len,
+                                     const double* w,
+                                     size_t w_len,
+                                     double complex* h);
+
+libsig_error_t
+freqz_naive(const double* b,
+            size_t b_len,
+            const double* a,
+            size_t a_len,
+            const double* w,
+            size_t w_len,
+            double complex* h);
 
 #endif // LIBSIG_H_

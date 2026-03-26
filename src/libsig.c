@@ -1,4 +1,6 @@
 #include "libsig.h"
+#include <complex.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -348,6 +350,37 @@ feedback_naive(const double* sys1_n,
 
         free(p1);
         free(p2);
+    }
+
+    return result;
+}
+
+libsig_error_t
+freqz_naive(const double* b,
+            size_t b_len,
+            const double* a,
+            size_t a_len,
+            const double* w,
+            size_t w_len,
+            double complex* h)
+{
+    libsig_error_t result = LIBSIG_EOK;
+    double complex num_sum;
+    double complex den_sum;
+
+    for (size_t i = 0; i < w_len; ++i) {
+        num_sum = 0.0 + 0.0 * I;
+        den_sum = 0.0 + 0.0 * I;
+
+        for (size_t k = 0; k < b_len; ++k) {
+            num_sum += b[k] * cexp(-I * w[i] * k);
+        }
+
+        for (size_t k = 0; k < a_len; ++k) {
+            den_sum += a[k] * cexp(-I * w[i] * k);
+        }
+
+        h[i] = num_sum / den_sum;
     }
 
     return result;

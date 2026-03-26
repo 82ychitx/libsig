@@ -5,16 +5,17 @@
 #include <time.h>
 
 #include "bench.h"
+#include "file_io.h"
 #include "libsig.h"
-#include "main.h"
 
 int
 main()
 {
+    file_io_err_t file_res;
     bench_error_t status = BENCH_EOK;
     double* input_data = NULL;
-    size_t num_of_input = 0;
-    double filter_coeffs[FILTER_ROWS][FILTER_COLS] = { 0 };
+    double* filter_coeffs = NULL;
+    size_t filter_cols, filter_rows, input_rows, input_cols;
 
     algo_bench_t filter_benches[] = {
         algo_bench_init("Form 1", (generic_fn_t)filter_naive_ternary),
@@ -42,52 +43,74 @@ main()
         algo_bench_init("Naive", (generic_fn_t)feedback_naive),
     };
 
-    if (load_filter_coeffs("./data/input/filter_coeffs.csv", filter_coeffs) !=
-        0) {
-        printf("Failed to load filter coefficients.");
+    algo_bench_t freqz_benches[] = {
+        algo_bench_init("Naive", (generic_fn_t)freqz_naive),
+    };
+
+    if ((file_res = file_io_read_double_matrix("./data/input/filter_coeffs.csv",
+                                               &filter_coeffs,
+                                               &filter_rows,
+                                               &filter_cols)) != FILE_IO_EOK) {
+        printf("Failed to load filter coefficients. Error: %d\n", file_res);
         status = BENCH_EFILE;
-    } else if ((input_data = malloc(sizeof(double) * BUF_SIZE)) == NULL) {
-        printf("Error allocating input data buffer.");
+    } else if ((file_res =
+                  file_io_read_double_matrix("./data/input/signal_small.csv",
+                                             &input_data,
+                                             &input_rows,
+                                             &input_cols)) != FILE_IO_EOK) {
+        printf("Failed to load input data. Error: %d\n", file_res);
         status = BENCH_EALLOC;
-    } else if (read_file_to_buffer("./data/input/signal_medium.csv",
-                                   input_data,
-                                   &num_of_input) != 0) {
-        printf("Failed to load input data.");
-        return BENCH_EFILE;
+    } else if (input_cols != 1) {
+        status = BENCH_EINVALID_INPUT;
     } else if ((status = filter_bench_suite(filter_coeffs,
                                             input_data,
-                                            num_of_input,
+                                            input_rows,
                                             filter_benches,
                                             ALGO_BENCH_LEN(filter_benches))) !=
                BENCH_EOK) {
-        printf("Error running filter benches.");
-    } else if ((status = impz_bench_suite(
-                  filter_coeffs, impz_benches, ALGO_BENCH_LEN(impz_benches))) !=
+        printf("Error running filter benches.\n");
+    } else if ((status = impz_bench_suite(filter_coeffs,
+                                          filter_rows,
+                                          filter_cols,
+                                          impz_benches,
+                                          ALGO_BENCH_LEN(impz_benches))) !=
                BENCH_EOK) {
-        printf("Error running impz benches.");
+        printf("Error running impz benches.\n");
     } else if ((status = conv_bench_suite(input_data,
-                                          num_of_input,
+                                          input_rows,
                                           conv_benches,
                                           ALGO_BENCH_LEN(conv_benches))) !=
                BENCH_EOK) {
         printf("Error running conv benches.");
     } else if ((status = series_bench_suite(filter_coeffs,
+                                            filter_rows,
+                                            filter_cols,
                                             series_benches,
                                             ALGO_BENCH_LEN(series_benches))) !=
                BENCH_EOK) {
-        printf("Error running series benches.");
+        printf("Error running series benches.\n");
     } else if ((status = parallel_bench_suite(
                   filter_coeffs,
+                  filter_rows,
+                  filter_cols,
                   parallel_benches,
                   ALGO_BENCH_LEN(parallel_benches))) != BENCH_EOK) {
-        printf("Error running parallel benches.");
+        printf("Error running parallel benches.\n");
     } else if ((status = feedback_bench_suite(
                   filter_coeffs,
+                  filter_rows,
+                  filter_cols,
                   feedback_benches,
                   ALGO_BENCH_LEN(feedback_benches))) != BENCH_EOK) {
-        printf("Error running feedback benches.");
+        printf("Error running feedback benches.\n");
+    } else if ((status = freqz_bench_suite(filter_coeffs,
+                                           filter_rows,
+                                           filter_cols,
+                                           freqz_benches,
+                                           ALGO_BENCH_LEN(freqz_benches))) !=
+               BENCH_EOK) {
+        printf("Error running freqz benches.\n");
     } else {
-
         bench_result_t bench = {
             filter_benches,   ALGO_BENCH_LEN(filter_benches),
             impz_benches,     ALGO_BENCH_LEN(impz_benches),
@@ -95,79 +118,14 @@ main()
             series_benches,   ALGO_BENCH_LEN(series_benches),
             parallel_benches, ALGO_BENCH_LEN(parallel_benches),
             feedback_benches, ALGO_BENCH_LEN(feedback_benches),
+            freqz_benches,    ALGO_BENCH_LEN(freqz_benches),
         };
 
         bench_print_table(&bench);
     }
 
     free(input_data);
+    free(filter_coeffs);
 
     return status;
-}
-
-int
-read_file_to_buffer(const char* filename, double* buffer, size_t* read_len)
-{
-    FILE* file;
-    char buf[256];
-    double line_val;
-
-    file = fopen(filename, "r");
-    if (!file) {
-        printf("Could not open file: %s", filename);
-        return 1;
-    }
-
-    *read_len = 0;
-    while (fgets(buf, sizeof(buf), file) != NULL) {
-        line_val = atof(buf);
-        buffer[*read_len] = line_val;
-        ++*read_len;
-    }
-    fclose(file);
-
-    return 0;
-}
-
-int
-dump_buffer_to_csv(const char* filename, const double* buffer, size_t len)
-{
-    FILE* file = fopen(filename, "w");
-    if (file == NULL) {
-        return 1;
-    }
-
-    fprintf(file, "Index,Value\n");
-
-    for (size_t i = 0; i < len; ++i) {
-        fprintf(file, "%zu,%lf\n", i, buffer[i]);
-    }
-
-    fclose(file);
-    return 0;
-}
-
-int
-load_filter_coeffs(const char* filepath,
-                   double coeffs[FILTER_ROWS][FILTER_COLS])
-{
-    FILE* file = fopen(filepath, "r");
-    if (!file)
-        return 1;
-
-    char buf[256];
-    uint8_t row = 0;
-
-    while (fgets(buf, sizeof(buf), file) != NULL && row < FILTER_ROWS) {
-        uint8_t col = 0;
-        char* token = strtok(buf, ",");
-        while (token != NULL && col < FILTER_COLS) {
-            coeffs[row][col] = atof(token);
-            token = strtok(NULL, ",");
-            ++col;
-        }
-        ++row;
-    }
-    fclose(file);
-    return 0;
 }

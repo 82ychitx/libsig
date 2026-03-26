@@ -70,9 +70,13 @@ writematrix(y_conv, '../data/output/conv_result.csv');
 % ---------------------------------------------------------
 
 % 3. Funkce FREQZ (Frekvenční charakteristika, např. 1024 bodů)
+omega = linspace(0, pi, 512);
 tic;
-[H, w] = freqz(b1, a1, 1024);
+H = freqz(b1, a1, omega);
 time_freqz = toc;
+
+writematrix(omega', '../data/input/normalized_freqs.csv');
+writematrix(H', '../data/output/freqz_result.csv');
 
 % 4. Funkce SERIES (Sériové řazení dvou filtrů)
 tic;

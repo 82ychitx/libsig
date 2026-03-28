@@ -76,29 +76,29 @@ H = freqz(b1, a1, omega);
 time_freqz = toc;
 
 writematrix(omega', '../data/input/normalized_freqs.csv');
-writematrix(H', '../data/output/freqz_result.csv');
+writematrix(H.', '../data/output/freqz_result.csv');
 
 % 4. Funkce SERIES (Sériové řazení dvou filtrů)
 tic;
 [b_series, a_series] = series(b1, a1, b2, a2);
 time_series = toc;
-writematrix(b_series', '../data/output/series_result_n.csv');
-writematrix(a_series', '../data/output/series_result_d.csv');
+writematrix(b_series, '../data/output/series_result_n.csv');
+writematrix(a_series, '../data/output/series_result_d.csv');
 
 
 % 5. Funkce PARALLEL (Paralelní řazení dvou filtrů)
 tic;
 [b_parallel, a_parallel] = parallel(b1, a1, b2, a2);
 time_parallel = toc;
-writematrix(b_parallel', '../data/output/parallel_result_n.csv');
-writematrix(a_parallel', '../data/output/parallel_result_d.csv');
+writematrix(b_parallel, '../data/output/parallel_result_n.csv');
+writematrix(a_parallel, '../data/output/parallel_result_d.csv');
 
 % 6. Funkce FEEDBACK (Zpětnovazební spojení dvou filtrů)
 tic;
 [b_feedback, a_feedback] = feedback(b1, a1, b2, a2);
 time_feedback = toc;
-writematrix(b_feedback', '../data/output/feedback_result_n.csv');
-writematrix(a_feedback', '../data/output/feedback_result_d.csv');
+writematrix(b_feedback, '../data/output/feedback_result_n.csv');
+writematrix(a_feedback, '../data/output/feedback_result_d.csv');
 
 
 %% 3. VÝPIS VÝSLEDKŮ

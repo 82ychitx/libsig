@@ -113,9 +113,10 @@ _run_generic_bench(void* ctx,
 }
 
 // -----------------------------------------------------------------------------
-// Algorithm-Specific Runners
+// Algorithm-Specific Runners & Checkers
 // -----------------------------------------------------------------------------
 
+// ========================== FILTER ==========================
 static void
 _filter_runner(void* ctx, generic_fn_t func)
 {
@@ -139,6 +140,8 @@ _filter_checker(const void* ctx, const void* output_correct)
       input->y, input->x_len, expected->data, expected->len);
 }
 
+// ========================== IMPZ ==========================
+
 static void
 _impz_runner(void* ctx, generic_fn_t func)
 {
@@ -157,6 +160,8 @@ _impz_checker(const void* ctx, const void* output_correct)
       input->y, input->y_len, expected->data, expected->len);
 }
 
+// ========================== CONV ==========================
+
 static void
 _conv_runner(void* ctx, generic_fn_t func)
 {
@@ -174,6 +179,8 @@ _conv_checker(const void* ctx, const void* output_correct)
     return _is_double_buffs_equal(
       input->y, input->y_len, expected->data, expected->len);
 }
+
+// ========================== SERIES ==========================
 
 static void
 _series_runner(void* ctx, generic_fn_t func)
@@ -217,6 +224,8 @@ _series_checker(const void* ctx, const void* expected_data)
     return result;
 }
 
+// ========================== PARALLEL ==========================
+
 static void
 _parallel_runner(void* ctx, generic_fn_t func)
 {
@@ -259,6 +268,8 @@ _parallel_checker(const void* ctx, const void* expected_data)
     return result;
 }
 
+// ========================== FEEDBACK ==========================
+
 static void
 _feedback_runner(void* ctx, generic_fn_t func)
 {
@@ -296,6 +307,38 @@ _feedback_checker(const void* ctx, const void* expected_data)
                                         input->sys_out_d_len,
                                         expected->d,
                                         expected->d_len);
+    }
+
+    return result;
+}
+
+// ========================== FREQZ ==========================
+static void
+_freqz_runner(void* ctx, generic_fn_t func)
+{
+    const freqz_input_t* input = (const freqz_input_t*)ctx;
+    ((freqz_fn_t)func)(input->b,
+                       input->b_len,
+                       input->a,
+                       input->a_len,
+                       input->w,
+                       input->w_len,
+                       input->h);
+}
+
+static bool
+_freqz_checker(const void* ctx, const void* expected_data)
+{
+    bool result = true;
+    const freqz_input_t* input = (const freqz_input_t*)ctx;
+    const expected_1d_complex_t* expected =
+      (const expected_1d_complex_t*)expected_data;
+
+    if (input->w_len != expected->len) {
+        result = false;
+    } else {
+        result = _is_complex_buffs_equal(
+          input->h, input->w_len, expected->data, expected->len);
     }
 
     return result;
@@ -351,66 +394,7 @@ algo_bench_init(const char* algo_name, const generic_fn_t fn)
     return bench;
 }
 
-bench_error_t
-impz_bench(const impz_input_t* input,
-           const expected_1d_t* output_correct,
-           algo_bench_t* benches,
-           size_t len)
-{
-    _run_generic_bench((void*)input,
-                       (const void*)output_correct,
-                       benches,
-                       len,
-                       _impz_runner,
-                       _impz_checker);
-    return BENCH_EOK;
-}
-
-bench_error_t
-conv_bench(const conv_input_t* input,
-           const expected_1d_t* output_correct,
-           algo_bench_t* benches,
-           size_t len)
-{
-    _run_generic_bench((void*)input,
-                       (const void*)output_correct,
-                       benches,
-                       len,
-                       _conv_runner,
-                       _conv_checker);
-    return BENCH_EOK;
-}
-
-bench_error_t
-series_bench(const series_input_t* input,
-             const expected_tf_t* output_correct,
-             algo_bench_t* benches,
-             size_t len)
-{
-    _run_generic_bench((void*)input,
-                       (const void*)output_correct,
-                       benches,
-                       len,
-                       _series_runner,
-                       _series_checker);
-    return BENCH_EOK;
-}
-
-bench_error_t
-parallel_bench(const parallel_input_t* input,
-               const expected_tf_t* output_correct,
-               algo_bench_t* benches,
-               size_t len)
-{
-    _run_generic_bench((void*)input,
-                       (const void*)output_correct,
-                       benches,
-                       len,
-                       _parallel_runner,
-                       _parallel_checker);
-    return BENCH_EOK;
-}
-
+// ========================== FILTER ==========================
 bench_error_t
 filter_bench(const filter_input_t* input,
              const expected_1d_t* output_correct,
@@ -440,10 +424,12 @@ filter_bench_suite(const double* coeffs,
     double* correct_output;
     double* output;
 
-    if (file_io_read_double_matrix("./data/output/filter_result.csv",
-                                   &correct_output,
-                                   &correct_rows,
-                                   &correct_cols) != FILE_IO_EOK) {
+    if (coeffs_rows != 2) {
+        status = BENCH_EINVALID_INPUT;
+    } else if (file_io_read_double_matrix("./data/output/filter_result.csv",
+                                          &correct_output,
+                                          &correct_rows,
+                                          &correct_cols) != FILE_IO_EOK) {
         status = BENCH_EFILE;
     } else {
         if ((output = malloc(sizeof(double) * input_len)) == NULL) {
@@ -457,45 +443,86 @@ filter_bench_suite(const double* coeffs,
             expected_1d_t expected_out = { correct_output, correct_rows };
 
             filter_bench(&filter_input, &expected_out, benches, benches_len);
-            
+
             free(output);
         }
-        
+
         free(correct_output);
     }
 
     return status;
 }
 
+// ========================== IMPZ ==========================
 bench_error_t
-impz_bench_suite(const double coeffs[FILTER_ROWS][FILTER_COLS],
+impz_bench(const impz_input_t* input,
+           const expected_1d_t* output_correct,
+           algo_bench_t* benches,
+           size_t len)
+{
+    _run_generic_bench((void*)input,
+                       (const void*)output_correct,
+                       benches,
+                       len,
+                       _impz_runner,
+                       _impz_checker);
+    return BENCH_EOK;
+}
+
+bench_error_t
+impz_bench_suite(const double* coeffs,
+                 size_t coeffs_rows,
+                 size_t coeffs_cols,
                  algo_bench_t* benches,
                  size_t benches_len)
 {
     bench_error_t status = BENCH_EOK;
-    size_t num_correct = 0;
-    size_t out_len = sizeof(double) * IMPZ_OUT_LEN;
-    double* output_correct = malloc(out_len);
-    double* output = malloc(out_len);
+    size_t correct_rows, correct_cols;
+    double* output_correct;
+    double* output;
 
-    if (!output_correct || !output) {
-        status = BENCH_EALLOC;
-    } else if (read_file_to_buffer("./data/output/impz_result.csv",
-                                   output_correct,
-                                   &num_correct) != 0) {
+    if (coeffs_rows != 2) {
+        status = BENCH_EINVALID_INPUT;
+    } else if (file_io_read_double_matrix("./data/output/impz_result.csv",
+                                          &output_correct,
+                                          &correct_rows,
+                                          &correct_cols) != FILE_IO_EOK) {
         status = BENCH_EFILE;
     } else {
-        impz_input_t impz_input = { coeffs[0],   FILTER_COLS, coeffs[1],
-                                    FILTER_COLS, output,      IMPZ_OUT_LEN };
-        expected_1d_t expected_out = { output_correct, num_correct };
+        if ((output = malloc(correct_rows * sizeof(double))) == NULL) {
+            status = BENCH_EALLOC;
+        } else {
+            impz_input_t impz_input = {
+                &coeffs[0],  coeffs_cols, &coeffs[coeffs_cols],
+                coeffs_cols, output,      correct_rows,
+            };
+            expected_1d_t expected_out = { output_correct, correct_rows };
 
-        impz_bench(&impz_input, &expected_out, benches, benches_len);
+            impz_bench(&impz_input, &expected_out, benches, benches_len);
+
+            free(output);
+        }
+        free(output_correct);
     }
 
-    free(output_correct);
-    free(output);
-
     return status;
+}
+
+// ========================== CONV ==========================
+
+bench_error_t
+conv_bench(const conv_input_t* input,
+           const expected_1d_t* output_correct,
+           algo_bench_t* benches,
+           size_t len)
+{
+    _run_generic_bench((void*)input,
+                       (const void*)output_correct,
+                       benches,
+                       len,
+                       _conv_runner,
+                       _conv_checker);
+    return BENCH_EOK;
 }
 
 bench_error_t
@@ -505,140 +532,212 @@ conv_bench_suite(const double* input_data,
                  size_t len)
 {
     bench_error_t status = BENCH_EOK;
-    size_t num_correct = 0;
-    size_t impz_in_len = 0;
-    double* output_correct =
-      malloc(sizeof(double) * CONV_FULL_LEN(input_len, IMPZ_OUT_LEN));
-    double* output =
-      malloc(sizeof(double) * CONV_FULL_LEN(input_len, IMPZ_OUT_LEN));
-    double* impz_input = malloc(sizeof(double) * IMPZ_OUT_LEN);
+    size_t correct_rows, correct_cols, impz_rows, impz_cols;
+    double* output_correct;
+    double* output;
+    double* impz_input;
 
-    if (!output_correct || !output || !impz_input) {
-        status = BENCH_EALLOC;
-    } else if (read_file_to_buffer("./data/output/conv_result.csv",
-                                   output_correct,
-                                   &num_correct) != 0) {
+    if ((file_io_read_double_matrix("./data/output/conv_result.csv",
+                                    &output_correct,
+                                    &correct_rows,
+                                    &correct_cols) != FILE_IO_EOK) ||
+        (file_io_read_double_matrix("./data/output/impz_result.csv",
+                                    &impz_input,
+                                    &impz_rows,
+                                    &impz_cols) != FILE_IO_EOK)) {
         status = BENCH_EFILE;
-    } else if (num_correct != CONV_FULL_LEN(input_len, IMPZ_OUT_LEN)) {
-        status = BENCH_ERR;
-    } else if (read_file_to_buffer("./data/output/impz_result.csv",
-                                   impz_input,
-                                   &impz_in_len) != 0) {
-        status = BENCH_EFILE;
-    } else if (IMPZ_OUT_LEN != impz_in_len) {
-        status = BENCH_ERR;
     } else {
-        conv_input_t conv_input = {
-            input_data,  input_len, impz_input,
-            impz_in_len, output,    CONV_FULL_LEN(input_len, impz_in_len)
-        };
-        expected_1d_t expected_out = { output_correct, num_correct };
+        if (correct_rows != CONV_FULL_LEN(input_len, impz_rows)) {
+            status = BENCH_EINVALID_INPUT;
+        } else if ((output = malloc(CONV_FULL_LEN(input_len, impz_rows) *
+                                    sizeof(double))) == NULL) {
+            status = BENCH_EALLOC;
+        } else {
+            conv_input_t conv_input = {
+                input_data, input_len, impz_input,
+                impz_rows,  output,    CONV_FULL_LEN(input_len, impz_rows)
+            };
+            expected_1d_t expected_out = { output_correct, correct_rows };
 
-        conv_bench(&conv_input, &expected_out, benches, len);
+            conv_bench(&conv_input, &expected_out, benches, len);
+
+            free(output);
+        }
+
+        free(output_correct);
+        free(impz_input);
     }
-
-    free(output_correct);
-    free(output);
-    free(impz_input);
 
     return status;
 }
 
+// ========================== SERIES ==========================
+
 bench_error_t
-series_bench_suite(const double input_coeffs[FILTER_ROWS][FILTER_COLS],
+series_bench(const series_input_t* input,
+             const expected_tf_t* output_correct,
+             algo_bench_t* benches,
+             size_t len)
+{
+    _run_generic_bench((void*)input,
+                       (const void*)output_correct,
+                       benches,
+                       len,
+                       _series_runner,
+                       _series_checker);
+    return BENCH_EOK;
+}
+
+bench_error_t
+series_bench_suite(const double* input_coeffs,
+                   size_t coeffs_rows,
+                   size_t coeffs_cols,
                    algo_bench_t* benches,
                    size_t len)
 {
     bench_error_t status = BENCH_EOK;
-    size_t num_correct_n = 0;
-    size_t num_correct_d = 0;
-    size_t expected_out_len = CONV_FULL_LEN(FILTER_COLS, FILTER_COLS);
+    size_t correct_rows_n, correct_cols_n, correct_rows_d, correct_cols_d;
+    double *output_correct_n, *output_correct_d;
+    double *output_n, *output_d;
+    size_t expected_out_len = CONV_FULL_LEN(coeffs_cols, coeffs_cols);
 
-    double* output_correct_n = malloc(sizeof(double) * expected_out_len);
-    double* output_correct_d = malloc(sizeof(double) * expected_out_len);
-    double* output_n = malloc(sizeof(double) * expected_out_len);
-    double* output_d = malloc(sizeof(double) * expected_out_len);
-
-    if (!output_correct_n || !output_correct_d || !output_n || !output_d) {
-        status = BENCH_EALLOC;
-    } else if (read_file_to_buffer("./data/output/series_result_n.csv",
-                                   output_correct_n,
-                                   &num_correct_n) != 0) {
-        status = BENCH_EFILE;
-    } else if (read_file_to_buffer("./data/output/series_result_d.csv",
-                                   output_correct_d,
-                                   &num_correct_d) != 0) {
+    if (coeffs_rows != 4) {
+        status = BENCH_EINVALID_INPUT;
+    } else if ((file_io_read_double_matrix("./data/output/series_result_n.csv",
+                                           &output_correct_n,
+                                           &correct_rows_n,
+                                           &correct_cols_n) != FILE_IO_EOK) ||
+               (file_io_read_double_matrix("./data/output/series_result_d.csv",
+                                           &output_correct_d,
+                                           &correct_rows_d,
+                                           &correct_cols_d) != FILE_IO_EOK)) {
         status = BENCH_EFILE;
     } else {
-        series_input_t series_input = {
-            input_coeffs[0], FILTER_COLS,      input_coeffs[1], FILTER_COLS,
-            input_coeffs[2], FILTER_COLS,      input_coeffs[3], FILTER_COLS,
-            output_n,        expected_out_len, output_d,        expected_out_len
-        };
+        if (correct_cols_n != expected_out_len ||
+            correct_cols_d != expected_out_len) {
+            status = BENCH_EINVALID_INPUT;
+        } else if (((output_n = malloc(expected_out_len * sizeof(double))) ==
+                    NULL) ||
+                   ((output_d = malloc(expected_out_len * sizeof(double))) ==
+                    NULL)) {
+            status = BENCH_EALLOC;
+        } else {
+            series_input_t series_input = { &input_coeffs[0 * coeffs_cols],
+                                            coeffs_cols,
+                                            &input_coeffs[1 * coeffs_cols],
+                                            coeffs_cols,
+                                            &input_coeffs[2 * coeffs_cols],
+                                            coeffs_cols,
+                                            &input_coeffs[3 * coeffs_cols],
+                                            coeffs_cols,
+                                            output_n,
+                                            expected_out_len,
+                                            output_d,
+                                            expected_out_len };
 
-        expected_tf_t expected = {
-            output_correct_n, num_correct_n, output_correct_d, num_correct_d
-        };
+            expected_tf_t expected = { output_correct_n,
+                                       correct_cols_n,
+                                       output_correct_d,
+                                       correct_cols_d };
 
-        series_bench(&series_input, &expected, benches, len);
+            series_bench(&series_input, &expected, benches, len);
+
+            free(output_n);
+            free(output_d);
+        }
+
+        free(output_correct_n);
+        free(output_correct_d);
     }
-
-    free(output_correct_n);
-    free(output_correct_d);
-    free(output_n);
-    free(output_d);
 
     return status;
 }
 
+// ========================== PARALLEL ==========================
+
 bench_error_t
-parallel_bench_suite(const double input_coeffs[FILTER_ROWS][FILTER_COLS],
+parallel_bench(const parallel_input_t* input,
+               const expected_tf_t* output_correct,
+               algo_bench_t* benches,
+               size_t len)
+{
+    _run_generic_bench((void*)input,
+                       (const void*)output_correct,
+                       benches,
+                       len,
+                       _parallel_runner,
+                       _parallel_checker);
+    return BENCH_EOK;
+}
+
+bench_error_t
+parallel_bench_suite(const double* input_coeffs,
+                     size_t coeffs_rows,
+                     size_t coeffs_cols,
                      algo_bench_t* benches,
                      size_t len)
 {
     bench_error_t status = BENCH_EOK;
-    size_t num_correct_n = 0;
-    size_t num_correct_d = 0;
+    size_t correct_rows_n, correct_cols_n, correct_rows_d, correct_cols_d;
+    double *output_correct_n, *output_correct_d;
+    double *output_n, *output_d;
+    size_t expected_out_len = CONV_FULL_LEN(coeffs_cols, coeffs_cols);
 
-    size_t expected_output_len = CONV_FULL_LEN(FILTER_COLS, FILTER_COLS);
-
-    double* output_correct_n = malloc(sizeof(double) * expected_output_len);
-    double* output_correct_d = malloc(sizeof(double) * expected_output_len);
-    double* output_n = malloc(sizeof(double) * expected_output_len);
-    double* output_d = malloc(sizeof(double) * expected_output_len);
-
-    if (!output_correct_n || !output_correct_d || !output_n || !output_d) {
-        status = BENCH_EALLOC;
-    } else if (read_file_to_buffer("./data/output/parallel_result_n.csv",
-                                   output_correct_n,
-                                   &num_correct_n) != 0) {
-        status = BENCH_EFILE;
-    } else if (read_file_to_buffer("./data/output/parallel_result_d.csv",
-                                   output_correct_d,
-                                   &num_correct_d) != 0) {
+    if (coeffs_rows != 4) {
+        status = BENCH_EINVALID_INPUT;
+    } else if ((file_io_read_double_matrix(
+                  "./data/output/parallel_result_n.csv",
+                  &output_correct_n,
+                  &correct_rows_n,
+                  &correct_cols_n) != FILE_IO_EOK) ||
+               (file_io_read_double_matrix(
+                  "./data/output/parallel_result_d.csv",
+                  &output_correct_d,
+                  &correct_rows_d,
+                  &correct_cols_d) != FILE_IO_EOK)) {
         status = BENCH_EFILE;
     } else {
-        parallel_input_t parallel_input = {
-            input_coeffs[0],     FILTER_COLS,     input_coeffs[1],
-            FILTER_COLS,         input_coeffs[2], FILTER_COLS,
-            input_coeffs[3],     FILTER_COLS,     output_n,
-            expected_output_len, output_d,        expected_output_len
-        };
+        if (correct_cols_n != expected_out_len ||
+            correct_cols_d != expected_out_len) {
+            status = BENCH_EINVALID_INPUT;
+        } else if (((output_n = malloc(expected_out_len * sizeof(double))) ==
+                    NULL) ||
+                   ((output_d = malloc(expected_out_len * sizeof(double))) ==
+                    NULL)) {
+            status = BENCH_EALLOC;
+        } else {
+            parallel_input_t parallel_input = { &input_coeffs[0 * coeffs_cols],
+                                                coeffs_cols,
+                                                &input_coeffs[1 * coeffs_cols],
+                                                coeffs_cols,
+                                                &input_coeffs[2 * coeffs_cols],
+                                                coeffs_cols,
+                                                &input_coeffs[3 * coeffs_cols],
+                                                coeffs_cols,
+                                                output_n,
+                                                expected_out_len,
+                                                output_d,
+                                                expected_out_len };
 
-        expected_tf_t expected_output = {
-            output_correct_n, num_correct_n, output_correct_d, num_correct_d
-        };
+            expected_tf_t expected_output = { output_correct_n,
+                                              correct_cols_n,
+                                              output_correct_d,
+                                              correct_cols_d };
 
-        parallel_bench(&parallel_input, &expected_output, benches, len);
+            parallel_bench(&parallel_input, &expected_output, benches, len);
+
+            free(output_n);
+            free(output_d);
+        }
+
+        free(output_correct_n);
+        free(output_correct_d);
     }
-
-    free(output_correct_n);
-    free(output_correct_d);
-    free(output_n);
-    free(output_d);
 
     return status;
 }
+
+// ========================== FEEDBACK ==========================
 
 bench_error_t
 feedback_bench(const feedback_input_t* input,
@@ -656,60 +755,86 @@ feedback_bench(const feedback_input_t* input,
 }
 
 bench_error_t
-feedback_bench_suite(const double input_coeffs[FILTER_ROWS][FILTER_COLS],
+feedback_bench_suite(const double* input_coeffs,
+                     size_t coeffs_rows,
+                     size_t coeffs_cols,
                      algo_bench_t* benches,
                      size_t len)
 {
     bench_error_t status = BENCH_EOK;
-    size_t num_correct_n = 0;
-    size_t num_correct_d = 0;
+    size_t correct_rows_n, correct_cols_n, correct_rows_d, correct_cols_d;
+    double *output_correct_n, *output_correct_d;
+    double *output_n, *output_d;
+    size_t expected_out_len = CONV_FULL_LEN(coeffs_cols, coeffs_cols);
 
-    size_t expected_output_len = CONV_FULL_LEN(FILTER_COLS, FILTER_COLS);
-
-    double* output_correct_n = malloc(sizeof(double) * expected_output_len);
-    double* output_correct_d = malloc(sizeof(double) * expected_output_len);
-    double* output_n = malloc(sizeof(double) * expected_output_len);
-    double* output_d = malloc(sizeof(double) * expected_output_len);
-
-    if (!output_correct_n || !output_correct_d || !output_n || !output_d) {
-        status = BENCH_EALLOC;
-    } else if (read_file_to_buffer("./data/output/feedback_result_n.csv",
-                                   output_correct_n,
-                                   &num_correct_n) != 0) {
-        status = BENCH_EFILE;
-    } else if (read_file_to_buffer("./data/output/feedback_result_d.csv",
-                                   output_correct_d,
-                                   &num_correct_d) != 0) {
+    if (coeffs_rows != 4) {
+        status = BENCH_EINVALID_INPUT;
+    } else if ((file_io_read_double_matrix(
+                  "./data/output/feedback_result_n.csv",
+                  &output_correct_n,
+                  &correct_rows_n,
+                  &correct_cols_n) != FILE_IO_EOK) ||
+               (file_io_read_double_matrix(
+                  "./data/output/feedback_result_d.csv",
+                  &output_correct_d,
+                  &correct_rows_d,
+                  &correct_cols_d) != FILE_IO_EOK)) {
         status = BENCH_EFILE;
     } else {
-        feedback_input_t feedback_input = {
-            input_coeffs[0],     FILTER_COLS,     input_coeffs[1],
-            FILTER_COLS,         input_coeffs[2], FILTER_COLS,
-            input_coeffs[3],     FILTER_COLS,     output_n,
-            expected_output_len, output_d,        expected_output_len
-        };
+        if (correct_cols_n != expected_out_len ||
+            correct_cols_d != expected_out_len) {
+            status = BENCH_EINVALID_INPUT;
+        } else if (((output_n = malloc(expected_out_len * sizeof(double))) ==
+                    NULL) ||
+                   ((output_d = malloc(expected_out_len * sizeof(double))) ==
+                    NULL)) {
+            status = BENCH_EALLOC;
+        } else {
+            feedback_input_t feedback_input = { &input_coeffs[0 * coeffs_cols],
+                                                coeffs_cols,
+                                                &input_coeffs[1 * coeffs_cols],
+                                                coeffs_cols,
+                                                &input_coeffs[2 * coeffs_cols],
+                                                coeffs_cols,
+                                                &input_coeffs[3 * coeffs_cols],
+                                                coeffs_cols,
+                                                output_n,
+                                                expected_out_len,
+                                                output_d,
+                                                expected_out_len };
 
-        expected_tf_t expected_output = {
-            output_correct_n, num_correct_n, output_correct_d, num_correct_d
-        };
+            expected_tf_t expected_output = { output_correct_n,
+                                              correct_cols_n,
+                                              output_correct_d,
+                                              correct_cols_d };
 
-        feedback_bench(&feedback_input, &expected_output, benches, len);
+            feedback_bench(&feedback_input, &expected_output, benches, len);
+
+            free(output_n);
+            free(output_d);
+        }
+
+        free(output_correct_n);
+        free(output_correct_d);
     }
-
-    free(output_correct_n);
-    free(output_correct_d);
-    free(output_n);
-    free(output_d);
 
     return status;
 }
 
+// ========================== FREQZ ==========================
 bench_error_t
 freqz_bench(const freqz_input_t* input,
             const expected_1d_complex_t* output_correct,
             algo_bench_t* benches,
             size_t len)
 {
+    _run_generic_bench((void*)input,
+                       (const void*)output_correct,
+                       benches,
+                       len,
+                       _freqz_runner,
+                       _freqz_checker);
+    return BENCH_EOK;
 }
 
 bench_error_t
@@ -719,4 +844,45 @@ freqz_bench_suite(const double* input_coeffs,
                   algo_bench_t* benches,
                   size_t len)
 {
+    bench_error_t status = BENCH_EOK;
+    size_t correct_rows, correct_cols, input_rows, input_cols;
+    double complex *output_correct, *output;
+    double* input_freqs;
+
+    if (coeffs_rows != 2) {
+        status = BENCH_EINVALID_INPUT;
+    } else if ((file_io_read_double_matrix("./data/input/normalized_freqs.csv",
+                                           &input_freqs,
+                                           &input_rows,
+                                           &input_cols) != FILE_IO_EOK) ||
+               (file_io_read_complex_matrix("./data/output/freqz_result.csv",
+                                            &output_correct,
+                                            &correct_rows,
+                                            &correct_cols) != FILE_IO_EOK)) {
+        status = BENCH_EFILE;
+    } else {
+        if ((output = malloc(input_rows * sizeof(double complex))) == NULL) {
+            status = BENCH_EALLOC;
+        } else {
+            freqz_input_t freqz_input = { .b = &input_coeffs[0],
+                                          .b_len = coeffs_cols,
+                                          .a = &input_coeffs[coeffs_cols],
+                                          .a_len = coeffs_cols,
+                                          .w = input_freqs,
+                                          .w_len = input_rows,
+                                          .h = output };
+
+            expected_1d_complex_t expected_output = { .data = output_correct,
+                                                      .len = correct_rows };
+
+            freqz_bench(&freqz_input, &expected_output, benches, len);
+
+            free(output);
+        }
+
+        free(output_correct);
+        free(input_freqs);
+    }
+
+    return status;
 }

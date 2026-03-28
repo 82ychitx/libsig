@@ -21,7 +21,7 @@ filter_naive_ternary(const double* b,
     double fb_sum;
 
     for (size_t n = 0; n < x_len; ++n) {
-        ff_sum = 0, fb_sum = 0;
+        ff_sum = 0.0, fb_sum = 0.0;
 
         for (size_t i = 0; i < b_len; ++i) {
             ff_sum += b[i] * (n < i ? 0 : x[n - i]);
@@ -55,7 +55,7 @@ filter_split_loops(const double* b,
     int filter_rank = MAX(b_len, a_len);
     // First loop where we branch
     for (n = 0; n < filter_rank; ++n) {
-        ff_sum = 0, fb_sum = 0;
+        ff_sum = 0.0, fb_sum = 0.0;
 
         for (int i = 0; i < (int)b_len; ++i) {
             ff_sum += b[i] * ((n - i < 0) ? 0 : x[n - i]);
@@ -71,7 +71,7 @@ filter_split_loops(const double* b,
     // Second loop we know that we have reached a point where (n - i) or (n -j)
     // will not throw negative indeces
     for (; n < (int)x_len; ++n) {
-        ff_sum = 0, fb_sum = 0;
+        ff_sum = 0.0, fb_sum = 0.0;
 
         for (size_t i = 0; i < b_len; ++i) {
             ff_sum += b[i] * x[n - i];
@@ -119,7 +119,7 @@ impz(const double* b,
     } else {
         impulse[0] = 1;
         for (size_t n = 0; n < y_len; ++n) {
-            ff_sum = 0, fb_sum = 0;
+            ff_sum = 0.0, fb_sum = 0.0;
 
             for (size_t i = 0; i < b_len; ++i) {
                 ff_sum += b[i] * ((n < i) ? 0 : impulse[n - i]);
@@ -153,7 +153,7 @@ conv_naive(const double* u,
         result = LIBSIG_EINVALID_INPUT;
     } else {
         for (size_t n = 0; n < conv_len; ++n) {
-            sum = 0;
+            sum = 0.0;
             for (size_t k = 0; k < u_len; ++k) {
                 if (n >= k && (n - k) < v_len) {
                     sum += u[k] * v[n - k];
@@ -186,7 +186,7 @@ conv_bounded(const double* u,
         result = LIBSIG_EINVALID_INPUT;
     } else {
         for (size_t n = 0; n < conv_len; ++n) {
-            sum = 0;
+            sum = 0.0;
             lower_bound = (n >= v_len) ? (n - v_len + 1) : 0;
             upper_bound = (n < u_len) ? n : (u_len - 1);
             for (size_t k = lower_bound; k <= upper_bound; ++k) {

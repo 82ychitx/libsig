@@ -54,7 +54,7 @@ main()
         printf("Failed to load filter coefficients. Error: %d\n", file_res);
         status = BENCH_EFILE;
     } else if ((file_res =
-                  file_io_read_double_matrix("./data/input/signal_small.csv",
+                  file_io_read_double_matrix("./data/input/signal_medium.csv",
                                              &input_data,
                                              &input_rows,
                                              &input_cols)) != FILE_IO_EOK) {
@@ -63,7 +63,7 @@ main()
     } else if (input_cols != 1) {
         status = BENCH_EINVALID_INPUT;
     } else if ((status = filter_bench_suite(filter_coeffs,
-                                            filter_rows,
+                                            2,
                                             filter_cols,
                                             input_data,
                                             input_rows,
@@ -72,7 +72,7 @@ main()
                BENCH_EOK) {
         printf("Error running filter benches.\n");
     } else if ((status = impz_bench_suite(filter_coeffs,
-                                          filter_rows,
+                                          2,
                                           filter_cols,
                                           impz_benches,
                                           ALGO_BENCH_LEN(impz_benches))) !=
@@ -106,7 +106,7 @@ main()
                   ALGO_BENCH_LEN(feedback_benches))) != BENCH_EOK) {
         printf("Error running feedback benches.\n");
     } else if ((status = freqz_bench_suite(filter_coeffs,
-                                           filter_rows,
+                                           2,
                                            filter_cols,
                                            freqz_benches,
                                            ALGO_BENCH_LEN(freqz_benches))) !=

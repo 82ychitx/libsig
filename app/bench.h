@@ -140,7 +140,7 @@ typedef struct
     size_t a_len;
     const double* w;
     size_t w_len;
-    double complex* h
+    double complex* h;
 } freqz_input_t;
 
 typedef struct

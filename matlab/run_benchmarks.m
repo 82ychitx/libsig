@@ -70,7 +70,7 @@ writematrix(y_conv, '../data/output/conv_result.csv');
 % ---------------------------------------------------------
 
 % 3. Funkce FREQZ (Frekvenční charakteristika, např. 1024 bodů)
-omega = linspace(0, pi, 1024);
+omega = linspace(0, pi, 1000);
 tic;
 H = freqz(b1, a1, omega);
 time_freqz = toc;

@@ -32,6 +32,7 @@ main()
         algo_bench_init("Naive", (generic_fn_t)conv_naive),
         algo_bench_init("Bounded", (generic_fn_t)conv_bounded),
         algo_bench_init("FFT single thread", (generic_fn_t)conv_fft_single_thread),
+        algo_bench_init("FFT parallel", (generic_fn_t)conv_fft_parallel),
     };
 
     algo_bench_t series_benches[] = {

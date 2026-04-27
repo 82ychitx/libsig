@@ -213,11 +213,11 @@ impz_optimized(const double* restrict b,
 }
 
 libsig_error_t
-conv_naive(const double* u,
+conv_naive(const double* restrict u,
            size_t u_len,
-           const double* v,
+           const double* restrict v,
            size_t v_len,
-           double* y,
+           double* restrict y,
            size_t y_len)
 {
     libsig_error_t result = LIBSIG_EOK;
@@ -242,11 +242,11 @@ conv_naive(const double* u,
 }
 
 libsig_error_t
-conv_bounded(const double* u,
+conv_bounded(const double* restrict u,
              size_t u_len,
-             const double* v,
+             const double* restrict v,
              size_t v_len,
-             double* y,
+             double* restrict y,
              size_t y_len)
 {
     libsig_error_t result = LIBSIG_EOK;
@@ -289,11 +289,11 @@ _next_power_of_2(size_t n)
 }
 
 libsig_error_t
-conv_fft_single_thread(const double* u,
+conv_fft_single_thread(const double* restrict u,
                        size_t u_len,
-                       const double* v,
+                       const double* restrict v,
                        size_t v_len,
-                       double* y,
+                       double* restrict y,
                        size_t y_len)
 {
     libsig_error_t result = LIBSIG_EOK;
@@ -316,9 +316,9 @@ conv_fft_single_thread(const double* u,
         free(p2);
         result = LIBSIG_ERR;
     } else {
-        if (fft_single_thread(u, u_len, p1, fft_len) != LIBSIG_EOK) {
+        if (fft(u, u_len, p1, fft_len) != LIBSIG_EOK) {
             result = LIBSIG_ERR;
-        } else if (fft_single_thread(v, v_len, p2, fft_len) != LIBSIG_EOK) {
+        } else if (fft(v, v_len, p2, fft_len) != LIBSIG_EOK) {
             result = LIBSIG_ERR;
         } else {
             for (size_t i = 0; i < fft_len; ++i) {
@@ -326,7 +326,78 @@ conv_fft_single_thread(const double* u,
             }
 
             // IFFT and reuse the p1 array
-            if (ifft_single_thread(y_fft, fft_len, p1) != LIBSIG_EOK) {
+            if (ifft(y_fft, fft_len, p1) != LIBSIG_EOK) {
+                result = LIBSIG_ERR;
+            } else {
+                // Extract the real part into the output
+                for (size_t i = 0; i < y_len; ++i) {
+                    y[i] = creal(p1[i]);
+                }
+            }
+        }
+
+        free(p1);
+        free(p2);
+        free(y_fft);
+    }
+
+    return result;
+}
+
+libsig_error_t
+conv_fft_parallel(const double* u,
+                  size_t u_len,
+                  const double* v,
+                  size_t v_len,
+                  double* y,
+                  size_t y_len)
+{
+    libsig_error_t result = LIBSIG_EOK;
+
+    size_t conv_len = CONV_FULL_LEN(u_len, v_len);
+    size_t fft_len = _next_power_of_2(conv_len);
+    double complex* p1;
+    double complex* p2;
+    double complex* y_fft;
+
+    if (y_len != conv_len) {
+        result = LIBSIG_EINVALID_INPUT;
+    } else if ((p1 = malloc(fft_len * sizeof(double complex))) == NULL) {
+        result = LIBSIG_ERR;
+    } else if ((p2 = malloc(fft_len * sizeof(double complex))) == NULL) {
+        free(p1);
+        result = LIBSIG_ERR;
+    } else if ((y_fft = malloc(fft_len * sizeof(double complex))) == NULL) {
+        free(p1);
+        free(p2);
+        result = LIBSIG_ERR;
+    } else {
+        libsig_error_t err_u = LIBSIG_EOK;
+        libsig_error_t err_v = LIBSIG_EOK;
+
+// Run the two forward FFTs simultaneously
+#pragma omp parallel sections
+        {
+#pragma omp section
+            {
+                err_u = fft(u, u_len, p1, fft_len);
+            }
+#pragma omp section
+            {
+                err_v = fft(v, v_len, p2, fft_len);
+            }
+        }
+
+        // Check if either thread failed
+        if (err_u != LIBSIG_EOK || err_v != LIBSIG_EOK) {
+            result = LIBSIG_ERR;
+        } else {
+            for (size_t i = 0; i < fft_len; ++i) {
+                y_fft[i] = p1[i] * p2[i];
+            }
+
+            // IFFT and reuse the p1 array
+            if (ifft(y_fft, fft_len, p1) != LIBSIG_EOK) {
                 result = LIBSIG_ERR;
             } else {
                 // Extract the real part into the output
@@ -717,11 +788,21 @@ _reverse_bit_order(size_t to_reverse, size_t bits_num)
     return reversed;
 }
 
+static double complex*
+_calculate_twiddle_factors(size_t fft_len, double complex exponent)
+{
+    double complex* twiddles = malloc(fft_len / 2 * sizeof(double complex));
+    for (size_t i = 0; i < fft_len / 2; ++i) {
+        twiddles[i] = cexp(exponent * i);
+    }
+    return twiddles;
+}
+
 libsig_error_t
-fft_single_thread(const double* x,
-                  size_t x_len,
-                  double complex* y,
-                  size_t fft_len)
+fft(const double* restrict x,
+    size_t x_len,
+    double complex* restrict y,
+    size_t fft_len)
 {
     libsig_error_t result = LIBSIG_EOK;
 
@@ -743,6 +824,7 @@ fft_single_thread(const double* x,
             }
         }
 
+        double complex* twiddles = _calculate_twiddle_factors(fft_len, (-I * 2.0 * M_PI) / fft_len);
         size_t step = 1;
         size_t half_step;
         // We start at the "bottom" of recursion and move our way "back up".
@@ -754,9 +836,10 @@ fft_single_thread(const double* x,
             // power of 2.
             half_step = step;
             step <<= 1;
+            size_t twiddle_step = fft_len / step;
             for (size_t offset = 0; offset < fft_len; offset += step) {
                 for (size_t k = 0; k < half_step; ++k) {
-                    double complex twiddle = cexp(-I * 2.0 * M_PI * k / step);
+                    double complex twiddle = twiddles[k * twiddle_step];
                     size_t top_idx = offset + k;
                     size_t bot_idx = offset + k + half_step;
                     double complex p = y[top_idx];
@@ -773,7 +856,9 @@ fft_single_thread(const double* x,
 }
 
 libsig_error_t
-ifft_single_thread(const double complex* fft, size_t fft_len, double complex* y)
+ifft(const double complex* restrict fft,
+     size_t fft_len,
+     double complex* restrict y)
 {
     libsig_error_t result = LIBSIG_EOK;
     if (fft_len == 0 || (fft_len & (fft_len - 1)) != 0) {
@@ -791,14 +876,16 @@ ifft_single_thread(const double complex* fft, size_t fft_len, double complex* y)
             }
         }
 
+        double complex* twiddles = _calculate_twiddle_factors(fft_len,  (I * 2.0 * M_PI) / fft_len);
         size_t step = 1;
         size_t half_step;
         for (size_t i = 0; i < bits_num; ++i) {
             half_step = step;
             step <<= 1;
+            size_t twiddle_step = fft_len / step;
             for (size_t offset = 0; offset < fft_len; offset += step) {
                 for (size_t k = 0; k < half_step; ++k) {
-                    double complex twiddle = cexp(I * 2.0 * M_PI * k / step);
+                    double complex twiddle = twiddles[k * twiddle_step];
                     size_t top_idx = offset + k;
                     size_t bot_idx = offset + k + half_step;
                     double complex p = y[top_idx];

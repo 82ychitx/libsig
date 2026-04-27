@@ -16,8 +16,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 project(${CMAKE_PROJECT_NAME} LANGUAGES C)
 
-# Idiomatic way to find the system's threading library
-find_package(Threads REQUIRED)
+find_package(OpenMP REQUIRED)
 
 # --- Library Target ---
 add_library(libsig STATIC src/libsig.c)
@@ -57,7 +56,14 @@ target_compile_options(libsig_bench PRIVATE
     $<$<CONFIG:Debug>:-O0 -g -Wall -Wextra>
 )
 
+if(OpenMP_C_FOUND)
+    # 3. Link OpenMP to your specific target. 
+    # Replace 'libsig' with the actual name of your library or executable target.
+    target_link_libraries(libsig PUBLIC OpenMP::OpenMP_C)
+else()
+    message(WARNING "OpenMP could not be found. Compiling without parallel support.")
+endif()
+
 target_link_libraries(libsig_bench PRIVATE 
-    libsig 
-    Threads::Threads
+    libsig
 )

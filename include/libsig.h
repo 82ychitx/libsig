@@ -107,6 +107,14 @@ conv_fft_single_thread(const double* u,
                        double* y,
                        size_t y_len);
 
+libsig_error_t
+conv_fft_parallel(const double* u,
+                  size_t u_len,
+                  const double* v,
+                  size_t v_len,
+                  double* y,
+                  size_t y_len);
+
 // ========================== SERIES ==========================
 typedef libsig_error_t (*series_fn_t)(const double* sys1_n,
                                       size_t sys1_n_len,
@@ -258,10 +266,7 @@ typedef libsig_error_t (*fft_fn_t)(const double* x,
                                    size_t fft_len);
 
 libsig_error_t
-fft_single_thread(const double* x,
-                  size_t x_len,
-                  double complex* y,
-                  size_t fft_len);
+fft(const double* x, size_t x_len, double complex* y, size_t fft_len);
 
 // ========================== IFFT ==========================
 typedef libsig_error_t (*ifft_fn_t)(const double complex* fft,
@@ -269,8 +274,6 @@ typedef libsig_error_t (*ifft_fn_t)(const double complex* fft,
                                     double complex* y);
 
 libsig_error_t
-ifft_single_thread(const double complex* fft,
-                   size_t fft_len,
-                   double complex* y);
+ifft(const double complex* fft, size_t fft_len, double complex* y);
 
 #endif // LIBSIG_H_

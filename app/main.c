@@ -52,6 +52,7 @@ main()
 
     algo_bench_t freqz_benches[] = {
         algo_bench_init("Naive", (generic_fn_t)freqz_naive),
+        algo_bench_init("FFT", (generic_fn_t)freqz_fft),
     };
 
     if ((file_res = file_io_read_double_matrix("./data/input/filter_coeffs.csv",
@@ -61,7 +62,7 @@ main()
         printf("Failed to load filter coefficients. Error: %d\n", file_res);
         status = BENCH_EFILE;
     } else if ((file_res =
-                  file_io_read_double_matrix("./data/input/signal_medium.csv",
+                  file_io_read_double_matrix("./data/input/signal_small.csv",
                                              &input_data,
                                              &input_rows,
                                              &input_cols)) != FILE_IO_EOK) {

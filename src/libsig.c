@@ -758,6 +758,46 @@ freqz_naive(const double* b,
     return result;
 }
 
+libsig_error_t
+freqz_fft(const double* b,
+          size_t b_len,
+          const double* a,
+          size_t a_len,
+          const double* w,
+          size_t w_len,
+          double complex* h)
+{
+    libsig_error_t result = LIBSIG_EOK;
+
+    size_t fft_len = _next_power_of_2(2 * w_len);
+    double complex* b_fft;
+    double complex* a_fft;
+
+    if (fft_len < b_len || fft_len < a_len) {
+        result = LIBSIG_EINVALID_INPUT;
+    } else if ((b_fft = malloc(fft_len * sizeof(double complex))) == NULL) {
+        result = LIBSIG_ERR;
+    } else if ((a_fft = malloc(fft_len * sizeof(double complex))) == NULL) {
+        free(b_fft);
+        result = LIBSIG_ERR;
+    } else {
+        if (fft(b, b_len, b_fft, fft_len) != LIBSIG_EOK) {
+            result = LIBSIG_ERR;
+        } else if (fft(a, a_len, a_fft, fft_len) != LIBSIG_EOK) {
+            result = LIBSIG_ERR;
+        } else {
+            for (size_t i = 0; (i < fft_len) && (i < w_len); ++i) {
+                h[i] = b_fft[i] / a_fft[i];
+            }
+        }
+
+        free(b_fft);
+        free(a_fft);
+    }
+
+    return result;
+}
+
 // Calculate the number of bits to represent a number, ex. 8, log2(8) = 3 bits.
 static size_t
 _numof_bits(size_t to_represent)
@@ -824,7 +864,8 @@ fft(const double* restrict x,
             }
         }
 
-        double complex* twiddles = _calculate_twiddle_factors(fft_len, (-I * 2.0 * M_PI) / fft_len);
+        double complex* twiddles =
+          _calculate_twiddle_factors(fft_len, (-I * 2.0 * M_PI) / fft_len);
         size_t step = 1;
         size_t half_step;
         // We start at the "bottom" of recursion and move our way "back up".
@@ -876,7 +917,8 @@ ifft(const double complex* restrict fft,
             }
         }
 
-        double complex* twiddles = _calculate_twiddle_factors(fft_len,  (I * 2.0 * M_PI) / fft_len);
+        double complex* twiddles =
+          _calculate_twiddle_factors(fft_len, (I * 2.0 * M_PI) / fft_len);
         size_t step = 1;
         size_t half_step;
         for (size_t i = 0; i < bits_num; ++i) {

@@ -259,6 +259,15 @@ freqz_naive(const double* b,
             size_t w_len,
             double complex* h);
 
+libsig_error_t
+freqz_fft(const double* b,
+            size_t b_len,
+            const double* a,
+            size_t a_len,
+            const double* w,
+            size_t w_len,
+            double complex* h);
+
 // ========================== FFT ==========================
 typedef libsig_error_t (*fft_fn_t)(const double* x,
                                    size_t x_len,

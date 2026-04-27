@@ -52,7 +52,7 @@ Multithreaded implementations (using OpenMP) frequently performed slower than si
 **4. Cache Access and FFT**
 For large computations (e.g., medium signal with 10,000,000 frequencies for `freqz`), memory bottlenecking and CPU cache misses limit performance. In such cases, the FFT implementation drops in efficiency, yielding speeds near identical to the naive implementation due to suboptimal cache locality.
 
-****5. Naive Benchmark Execution**
+**5. Naive Benchmark Execution**
 The benchmarks were executed naively as single runs for both the C application and the MATLAB script. There was no cache warmup (population) or averaging of multiple runs to smooth out outliers, meaning the results represent a raw, single-execution snapshot rather than a statistically robust profile.
 
 ### Results: Signal Small

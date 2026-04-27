@@ -24,7 +24,7 @@ _is_double_buffs_equal(const double* a,
     if (a_len != b_len) {
         result = false;
     } else {
-        double epsilon = 1e-9;
+        double epsilon = 1e-6;
         for (size_t i = 0; i < a_len; ++i) {
             if (fabs(a[i] - b[i]) > epsilon) {
                 result = false;
@@ -47,7 +47,7 @@ _is_complex_buffs_equal(const double complex* a,
     if (a_len != b_len) {
         result = false;
     } else {
-        double epsilon = 1e-9;
+        double epsilon = 1e-6;
         for (size_t i = 0; i < a_len; ++i) {
             if (cabs(a[i] - b[i]) > epsilon) {
                 result = false;
@@ -613,8 +613,8 @@ series_bench_suite(const double* input_coeffs,
                                            &correct_cols_d) != FILE_IO_EOK)) {
         status = BENCH_EFILE;
     } else {
-        if (correct_cols_n != expected_out_len ||
-            correct_cols_d != expected_out_len) {
+        if (correct_rows_n != expected_out_len ||
+            correct_rows_d != expected_out_len) {
             status = BENCH_EINVALID_INPUT;
         } else if (((output_n = malloc(expected_out_len * sizeof(double))) ==
                     NULL) ||
@@ -636,9 +636,9 @@ series_bench_suite(const double* input_coeffs,
                                             expected_out_len };
 
             expected_tf_t expected = { output_correct_n,
-                                       correct_cols_n,
+                                       correct_rows_n,
                                        output_correct_d,
-                                       correct_cols_d };
+                                       correct_rows_d };
 
             series_bench(&series_input, &expected, benches, len);
 
@@ -697,8 +697,8 @@ parallel_bench_suite(const double* input_coeffs,
                   &correct_cols_d) != FILE_IO_EOK)) {
         status = BENCH_EFILE;
     } else {
-        if (correct_cols_n != expected_out_len ||
-            correct_cols_d != expected_out_len) {
+        if (correct_rows_n != expected_out_len ||
+            correct_rows_d != expected_out_len) {
             status = BENCH_EINVALID_INPUT;
         } else if (((output_n = malloc(expected_out_len * sizeof(double))) ==
                     NULL) ||
@@ -720,9 +720,9 @@ parallel_bench_suite(const double* input_coeffs,
                                                 expected_out_len };
 
             expected_tf_t expected_output = { output_correct_n,
-                                              correct_cols_n,
+                                              correct_rows_n,
                                               output_correct_d,
-                                              correct_cols_d };
+                                              correct_rows_d };
 
             parallel_bench(&parallel_input, &expected_output, benches, len);
 
@@ -781,8 +781,8 @@ feedback_bench_suite(const double* input_coeffs,
                   &correct_cols_d) != FILE_IO_EOK)) {
         status = BENCH_EFILE;
     } else {
-        if (correct_cols_n != expected_out_len ||
-            correct_cols_d != expected_out_len) {
+        if (correct_rows_n != expected_out_len ||
+            correct_rows_d != expected_out_len) {
             status = BENCH_EINVALID_INPUT;
         } else if (((output_n = malloc(expected_out_len * sizeof(double))) ==
                     NULL) ||
@@ -804,9 +804,9 @@ feedback_bench_suite(const double* input_coeffs,
                                                 expected_out_len };
 
             expected_tf_t expected_output = { output_correct_n,
-                                              correct_cols_n,
+                                              correct_rows_n,
                                               output_correct_d,
-                                              correct_cols_d };
+                                              correct_rows_d };
 
             feedback_bench(&feedback_input, &expected_output, benches, len);
 

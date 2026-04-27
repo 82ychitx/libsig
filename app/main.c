@@ -20,27 +20,33 @@ main()
     algo_bench_t filter_benches[] = {
         algo_bench_init("Form 1", (generic_fn_t)filter_naive_ternary),
         algo_bench_init("Split loops", (generic_fn_t)filter_split_loops),
+        algo_bench_init("Form 2", (generic_fn_t)filter_history_buffer),
     };
 
     algo_bench_t impz_benches[] = {
-        algo_bench_init("Alloc buf", (generic_fn_t)impz),
+        algo_bench_init("Alloc buf", (generic_fn_t)impz_alloc_dirac),
+        algo_bench_init("Optimized", (generic_fn_t)impz_optimized),
     };
 
     algo_bench_t conv_benches[] = {
         algo_bench_init("Naive", (generic_fn_t)conv_naive),
         algo_bench_init("Bounded", (generic_fn_t)conv_bounded),
+        algo_bench_init("FFT single thread", (generic_fn_t)conv_fft_single_thread),
     };
 
     algo_bench_t series_benches[] = {
         algo_bench_init("Naive", (generic_fn_t)series_naive),
+               algo_bench_init("Bounded", (generic_fn_t)series_bounded),
     };
 
     algo_bench_t parallel_benches[] = {
         algo_bench_init("Naive", (generic_fn_t)parallel_naive),
+        algo_bench_init("Bounded", (generic_fn_t)parallel_bounded),
     };
 
     algo_bench_t feedback_benches[] = {
         algo_bench_init("Naive", (generic_fn_t)feedback_naive),
+        algo_bench_init("Bounded", (generic_fn_t)feedback_bounded),
     };
 
     algo_bench_t freqz_benches[] = {

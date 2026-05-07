@@ -24,7 +24,7 @@ generate_signal = @(N) A1*sin(2*pi*f1*(0:N-1)/fs) + ...
 %% 3. Generování signálů
 disp('Generuji signály...');
 sig_small  = generate_signal(N_small)';   % Transpozice na sloupcový vektor
-%sig_medium = generate_signal(N_medium)';
+sig_medium = generate_signal(N_medium)';
 %sig_large  = generate_signal(N_large)';
 
 %% 4. Vykreslení malého signálu a jeho spektra pro kontrolu
@@ -55,10 +55,10 @@ input_path = '../data/input/';
 writematrix(sig_small, strcat(input_path, 'signal_small.csv'));
 disp('signal_small.csv uložen.');
 
-%writematrix(sig_medium, strcat(input_path, 'signal_medium.csv'));
+writematrix(sig_medium, strcat(input_path, 'signal_medium.csv'));
 disp('signal_medium.csv uložen.');
 
 %writematrix(sig_large, strcat(input_path, 'signal_large.csv'));
-disp('signal_large.csv uložen.');
+%disp('signal_large.csv uložen.');
 
 disp('Hotovo!');
